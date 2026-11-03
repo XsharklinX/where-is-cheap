@@ -1,5 +1,6 @@
 // Todo lo que se guarda en el navegador. Nada sale de aquí salvo el nombre del juego que se busca.
-import type { Coupon, HistoryPoint, StoreId } from './types';
+import type { Learned } from './fees';
+import type { Coupon, HistoryPoint, Pay, StoreId } from './types';
 
 async function get<T>(key: string, def: T): Promise<T> {
   const v = (await browser.storage.local.get(key))[key];
@@ -11,13 +12,17 @@ const set = (key: string, v: unknown) => browser.storage.local.set({ [key]: v })
 export interface SteamUser { wishlist: number[]; owned: number[]; at: number }
 export const getUser = () => get<SteamUser>('steamUser', { wishlist: [], owned: [], at: 0 });
 export const setUser = (u: SteamUser) => set('steamUser', u);
+/** Resultado de la última lectura de la cuenta, para explicar en la interfaz por qué no hay lista. */
+export interface SteamStatus { status: 'ok' | 'empty' | 'logged-out' | 'error'; at: number; error?: string; source?: string; wishlist?: number; owned?: number }
+export const getSteamStatus = () => get<SteamStatus | null>('steamStatus', null);
+export const setSteamStatus = (s: SteamStatus) => set('steamStatus', s);
 
 /* D: historial por juego. */
 export const getHistory = (appid: number) => get<HistoryPoint[]>(`hist:${appid}`, []);
 export const setHistory = (appid: number, h: HistoryPoint[]) => set(`hist:${appid}`, h);
 
 /* E: lista de deseos con límites y último precio visto. */
-export interface WishItem { appid: number; name?: string; target?: number; lastBest?: number; lastStore?: StoreId; lastUrl?: string; steamUSD?: number | null; checkedAt?: number; notifiedAt?: number; notifiedPrice?: number }
+export interface WishItem { appid: number; name?: string; target?: number; lastBest?: number; lastStore?: StoreId; lastUrl?: string; steamUSD?: number | null; steamInitialUSD?: number | null; steamDiscount?: number; checkedAt?: number; notifiedAt?: number; notifiedPrice?: number }
 export const getWish = () => get<Record<number, WishItem>>('wish', {});
 export const setWish = (w: Record<number, WishItem>) => set('wish', w);
 
@@ -26,10 +31,20 @@ export const getCoupons = () => get<Coupon[]>('coupons', []);
 export const setCoupons = (c: Coupon[]) => set('coupons', c);
 
 /* O: compras hechas desde «Ir». pending: se pulsó Ir, falta confirmar; bought: confirmado. */
-export interface LedgerEntry { id: string; appid: number; name: string; store: StoreId; paidUSD: number; steamUSD: number | null; at: number; state: 'pending' | 'bought' | 'skipped' }
+export interface LedgerEntry {
+  id: string; appid: number; name: string; store: StoreId; paidUSD: number; steamUSD: number | null; at: number; state: 'pending' | 'bought' | 'skipped';
+  /** 3: para aprender la comisión. Precio sin comisión (ya con cupón) en la moneda de la tienda, esa moneda y con qué se pagó. */
+  net?: number; currency?: 'USD' | 'EUR'; pay?: Pay;
+  /** true si el total lo escribió el usuario (y no es la estimación). */
+  paidConfirmed?: boolean;
+}
 export const getLedger = () => get<LedgerEntry[]>('ledger', []);
 export const setLedger = (l: LedgerEntry[]) => set('ledger', l);
 
 /* Nombres de juegos ya consultados. */
 export const getNames = () => get<Record<number, string>>('names', {});
 export const setNames = (n: Record<number, string>) => set('names', n);
+
+/* 3: compras confirmadas con su total real, para calcular la comisión de cada tienda. */
+export const getLearned = () => get<Learned>('feesLearned', {});
+export const setLearned = (l: Learned) => set('feesLearned', l);

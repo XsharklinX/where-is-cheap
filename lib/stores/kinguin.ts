@@ -44,3 +44,23 @@ export async function searchKinguin(query: string, country: string): Promise<Raw
   if (!r.ok) throw new Error(`Kinguin ${r.status}`);
   return parseKinguin(await r.json(), country);
 }
+
+/** 10: un vendedor de Kinguin, tal como sale en la página del producto. */
+export interface SellerNote { name: string; orders: number; rating: number }
+
+/**
+ * 10: la página del producto trae cada oferta con su vendedor («completedOrders», «merchantRating» de 0 a 1).
+ * Devuelve el de la oferta con ese precio (en céntimos de euro) o, si no está, el de la más barata.
+ */
+export function parseKinguinSeller(html: string, cents?: number): SellerNote | null {
+  const re = /"price":\{"amount":(\d+),"currency":"(\w+)"\},"unitPrice":\d+,"seller":\{"id":\d+,"name":"((?:[^"\\]|\\.)*)","merchantStatistics":\{"completedOrders":(\d+),"merchantRating":([\d.]+)\}/g;
+  const list: (SellerNote & { amount: number })[] = [];
+  for (let m = re.exec(html); m; m = re.exec(html)) {
+    let name = m[3];
+    try { name = JSON.parse(`"${m[3]}"`); } catch { /* se deja tal cual */ }
+    list.push({ amount: Number(m[1]), name, orders: Number(m[4]), rating: Number(m[5]) });
+  }
+  if (!list.length) return null;
+  const hit = (cents != null ? list.find((x) => x.amount === cents) : undefined) ?? list.reduce((a, b) => (b.amount < a.amount ? b : a));
+  return { name: hit.name, orders: hit.orders, rating: hit.rating };
+}

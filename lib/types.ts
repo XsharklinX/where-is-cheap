@@ -29,6 +29,8 @@ export interface Offer extends RawOffer {
   totalUSD: number;
   fit: Fit;
   fitText: string;
+  /** 13: por qué la región sirve o no, para el globo de ayuda. */
+  fitWhy: string;
   /** Mucho más barato que el resto en un marketplace: posible clave robada o revocable. */
   suspicious?: boolean;
 }
@@ -45,12 +47,19 @@ export interface Game {
   isDlc?: boolean;
   /** appid del juego base si es un DLC. */
   baseAppid?: number;
+  /** Steam tiene otro juego con exactamente el mismo nombre: las ofertas no se pueden atribuir con seguridad. */
+  twin?: boolean;
 }
 
 export interface Rates {
   /** Unidades de cada moneda por 1 USD. */
   EUR: number;
+  /** Pesos por dólar que pagas de verdad: la tasa del mercado más el recargo de tu banco. */
   DOP: number;
+  /** Tasa del mercado, sin recargo. */
+  DOPmarket?: number;
+  /** Recargo aplicado a DOP, en %. */
+  fxPct?: number;
   at: number;
   fallback: boolean;
 }
@@ -80,6 +89,24 @@ export interface Compare {
   owned: boolean;
   /** Para DLC: si el usuario tiene el juego base. null si no se sabe. */
   ownsBase: boolean | null;
+  /** 1: tiendas que aún no han respondido (la comparación llega por partes). */
+  pending: StoreId[];
+  /** 2: mínimo histórico de las tiendas oficiales, llevado al precio de Steam en RD. */
+  low?: HistLow | null;
+  /** 3: tiendas cuya comisión ya se comprobó con una compra real (fecha). */
+  feesChecked: Partial<Record<StoreId, number>>;
+  /** 10: nombre de la edición que se compara, si no es la estándar. */
+  edition?: string;
+}
+
+/** 2: mínimo histórico (CheapShark, tiendas oficiales de EE. UU.) expresado como descuento. */
+export interface HistLow {
+  /** Descuento máximo visto sobre el precio normal, en %. */
+  pct: number;
+  /** Fecha del mínimo. */
+  date: number;
+  /** El mismo descuento aplicado al precio normal de Steam en RD, en USD. */
+  usd: number | null;
 }
 
 export interface Coupon {
@@ -89,6 +116,8 @@ export interface Coupon {
   pct: number;
   /** Fecha en que el usuario dijo que le funcionó. */
   checkedAt: number;
+  /** 4: fecha de caducidad, si la tiene. */
+  expires?: number;
 }
 
 export interface Settings {
@@ -101,8 +130,14 @@ export interface Settings {
   dropAlerts: boolean;
   /** % mínimo de descuento frente a Steam para el aviso general. */
   dropPct: number;
+  /** Como mucho un aviso de bajadas generales cada tantas horas (6, 24 o 168). Los límites avisan al momento. */
+  alertEvery: number;
+  /** Avisos silenciados hasta esta fecha (0 = no). */
+  mutedUntil: number;
   /** Detección de juegos fuera de Steam (pide permiso aparte). */
   detectAnywhere: boolean;
+  /** 5: recargo del banco sobre la tasa del mercado al pagar en dólares con una tarjeta en pesos (%). 0 = tarjeta en dólares. */
+  fxPct: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -113,7 +148,10 @@ export const DEFAULT_SETTINGS: Settings = {
   accounts: false,
   dropAlerts: true,
   dropPct: 60,
+  alertEvery: 24,
+  mutedUntil: 0,
   detectAnywhere: false,
+  fxPct: 0,
 };
 
 export const STORES: Record<StoreId, { name: string; short: string; color: string; marketplace: boolean }> = {
@@ -124,3 +162,12 @@ export const STORES: Record<StoreId, { name: string; short: string; color: strin
 };
 
 export const STORE_IDS = Object.keys(STORES) as StoreId[];
+
+/** 10: otra edición del mismo juego, tal como la vende Steam en la ficha. */
+export interface Edition { name: string; label: string; steamUSD: number | null; steamInitialUSD: number | null }
+
+/** 7: resultado del buscador. */
+export interface SearchHit { appid: number; name: string; img: string; steamUSD: number | null }
+
+/** 9: cada juego de un pack, con su mejor precio suelto (fuera o en Steam). */
+export interface BundleItem { appid: number; name: string; owned: boolean; store: StoreId | 'steam' | null; priceUSD: number | null; url: string }

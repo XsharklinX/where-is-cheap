@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lista de deseos · Where is cheap</title>
+</head>
+<body>
+  <main class="wic wl">
+    <header class="wl-head">
+      <div id="brand" class="wl-brand"></div>
+      <div class="wl-title">
+        <h1>Tu lista de deseos</h1>
+        <p id="summary" class="mute">Cargando…</p>
+      </div>
+      <div class="wl-run">
+        <span id="progress" class="mute" aria-live="polite"></span>
+        <button id="checkAll" class="go">Revisar todo</button>
+      </div>
+    </header>
+    <div id="tiles" class="wl-tiles" hidden></div>
+    <div id="sale"></div>
+    <div class="wl-bar">
+      <div id="filters" class="wl-filters" role="radiogroup" aria-label="Filtrar"></div>
+      <label class="wl-sort wl-bulk">Límites
+        <select id="bulk">
+          <option value="">En bloque…</option>
+          <option value="low">Al mínimo histórico</option>
+          <option value="50">A −50 % de Steam</option>
+          <option value="60">A −60 % de Steam</option>
+          <option value="75">A −75 % de Steam</option>
+          <option value="clear">Quitar los límites</option>
+        </select>
+      </label>
+      <div id="view" class="wl-view" role="radiogroup" aria-label="Vista">
+        <button type="button" role="radio" data-v="table">Tabla</button>
+        <button type="button" role="radio" data-v="cards">Tarjetas</button>
+      </div>
+      <label class="wl-sort">Ordenar
+        <select id="sort">
+          <option value="moment">Mejor momento para comprar</option>
+          <option value="pct">Mayor ahorro (%)</option>
+          <option value="usd">Mayor ahorro ($)</option>
+          <option value="price">Más barato</option>
+          <option value="name">Nombre</option>
+        </select>
+      </label>
+    </div>
+    <div id="grid" class="wl-grid"></div>
+  </main>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

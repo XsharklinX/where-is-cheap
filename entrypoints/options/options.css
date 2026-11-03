@@ -32,3 +32,30 @@ kbd { font: 600 12px var(--f-mono); background: #141117; border: 1px solid #3832
 .cform input, .cform select { background: #141117; color: var(--ink); border: 1px solid #38323e; border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 13px; }
 .cform #cCode { flex: 1; min-width: 120px; }
 .cform #cPct { width: 70px; }
+
+/* 5: tarjeta en pesos */
+.fxbox { display: grid; gap: 10px; margin-top: 4px; }
+.fxrow { align-items: center; font-size: 13px; color: #d6cfd4; }
+.fxrow input { width: 96px; }
+.fxrow label { font-size: 13px; color: var(--mute); }
+#fxNow { line-height: 1.45; }
+
+/* 4: caducidad de cupones */
+.cexp { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--mute); }
+.cexp input { color-scheme: dark; }
+.crow.off { opacity: .6; }
+.crow.off .mono { text-decoration: line-through; }
+.crow .chip + button, .crow button + button { margin-left: 0; }
+#fees .crow .mono { color: #d6cfd4; font-size: 12.5px; }
+#fees .crow .chip { margin-left: auto; }
+
+/* 4: tu PC */
+.pcgrid { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 8px 10px; align-items: center; }
+.pcgrid .lbl { font-size: 13px; color: #d6cfd4; }
+.pcgrid input { background: #141117; color: var(--ink); border: 1px solid #38323e; border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 13px; min-width: 0; }
+.pcgrid input::placeholder { color: #8d858f; }
+.pcgrid .ram { display: flex; align-items: center; gap: 6px; color: var(--mute); font-size: 13px; }
+.pcgrid .ram input { width: 80px; }
+.pcact { display: flex; gap: 8px; }
+.pcact button { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 7px; padding: 5px 10px; font-size: 12.5px; cursor: pointer; }
+@media (max-width: 480px) { .pcgrid { grid-template-columns: 1fr; } }

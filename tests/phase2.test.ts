@@ -72,8 +72,12 @@ describe('D: historial y veredicto', () => {
     expect(h[0].best).toBe(8.5);
   });
   it('próximas rebajas', () => {
-    expect(nextSale(Date.UTC(2026, 10, 3))).toEqual({ name: 'Rebajas de invierno', days: 45 });
-    expect(nextSale(Date.UTC(2026, 11, 20)).name).toBe('Rebajas de primavera');
+    // Acción de Gracias 2026: jueves 26 de noviembre; las de otoño empiezan el martes 24.
+    expect(nextSale(Date.UTC(2026, 10, 3))).toMatchObject({ name: 'Rebajas de otoño (Black Friday)', days: 21, live: false, bf: true });
+    expect(nextSale(Date.UTC(2026, 10, 26))).toMatchObject({ live: true, endsIn: 5 });
+    expect(nextSale(Date.UTC(2026, 11, 2)).name).toBe('Rebajas de invierno');
+    expect(nextSale(Date.UTC(2026, 11, 20))).toMatchObject({ name: 'Rebajas de invierno', live: true });
+    expect(nextSale(Date.UTC(2027, 0, 10)).name).toBe('Rebajas de primavera');
   });
   it('compra si es el mínimo de un historial largo', () => {
     const now = Date.UTC(2026, 6, 1);
@@ -85,7 +89,7 @@ describe('D: historial y veredicto', () => {
     const h = [40, 30, 20, 2].map((d) => ({ t: now - d * DAY, steam: 15, best: 8 }));
     const v = verdict(h, 11, 0, now);
     expect(v.kind).toBe('wait');
-    expect(v.detail).toContain('invierno');
+    expect(v.detail).toContain('Black Friday');
   });
   it('sin historial no inventa un mínimo', () => {
     expect(verdict([], 10, 0, Date.UTC(2026, 7, 1)).title).toBe('Historial en marcha');
@@ -96,7 +100,7 @@ describe('D: historial y veredicto', () => {
 });
 
 describe('F: carrito', () => {
-  const off = (store: Offer['store'], price: number): Offer => ({ store, title: '', kind: 'key', regions: ['global'], price, currency: 'USD', url: store, priceUSD: price, couponUSD: 0, feeUSD: 0, totalUSD: price, fit: 'ok', fitText: '' });
+  const off = (store: Offer['store'], price: number): Offer => ({ store, title: '', kind: 'key', regions: ['global'], price, currency: 'USD', url: store, priceUSD: price, couponUSD: 0, feeUSD: 0, totalUSD: price, fit: 'ok', fitText: '', fitWhy: '' });
   it('junta pedidos en la tienda con comisión fija por pedido cuando sale más barato', () => {
     const items: CartItem[] = [
       { appid: 1, name: 'A', steamUSD: 20, offers: [off('eneba', 8), off('kinguin', 7.9)] },
@@ -155,7 +159,7 @@ describe('C: solo páginas de videojuegos', () => {
 
 describe('F: «por separado» honesto', () => {
   it('con un solo juego no hay ahorro por agrupar', () => {
-    const o = (store: Offer['store'], price: number): Offer => ({ store, title: '', kind: 'key', regions: ['global'], price, currency: 'USD', url: store, priceUSD: price, couponUSD: 0, feeUSD: 0, totalUSD: price, fit: 'ok', fitText: '' });
+    const o = (store: Offer['store'], price: number): Offer => ({ store, title: '', kind: 'key', regions: ['global'], price, currency: 'USD', url: store, priceUSD: price, couponUSD: 0, feeUSD: 0, totalUSD: price, fit: 'ok', fitText: '', fitWhy: '' });
     const p = planCart([{ appid: 1, name: 'A', steamUSD: 20, offers: [o('kinguin', 9.6), o('ig', 10)] }], 'card');
     expect(p.totalUSD).toBe(10);
     expect(p.separateUSD).toBe(10);

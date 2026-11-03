@@ -1,11 +1,13 @@
 import type { Pay, StoreId } from './types';
 
-// Comisiones ESTIMADAS (2026-11-02), sin verificar con un carrito real. La interfaz dice «comisión est.».
+// Comisiones ESTIMADAS (2026-11-02), sin verificar con un carrito real. La interfaz dice «est.» hasta que
+// David confirma una compra con lo que pagó de verdad: entonces se calcula la comisión real de esa tienda
+// (3: comisiones que se aprenden) y se guarda en el navegador.
 // pct: porcentaje sobre el precio; fixed: importe fijo en USD por pedido.
-// Pendiente: comprobar cada una con un carrito de verdad y anotar la fecha aquí.
-export const FEES_CHECKED = false;
+export interface Fee { pct: number; fixed: number }
+export type FeeTable = Record<StoreId, Record<Pay, Fee>>;
 
-export const FEES: Record<StoreId, Record<Pay, { pct: number; fixed: number }>> = {
+export const FEES: FeeTable = {
   ig: { card: { pct: 0, fixed: 0 }, paypal: { pct: 0, fixed: 0 } },
   eneba: { card: { pct: 5, fixed: 0.39 }, paypal: { pct: 7, fixed: 0.39 } },
   driffle: { card: { pct: 4, fixed: 0 }, paypal: { pct: 6, fixed: 0 } },
@@ -14,7 +16,55 @@ export const FEES: Record<StoreId, Record<Pay, { pct: number; fixed: number }>> 
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
-export function feeFor(store: StoreId, pay: Pay, priceUSD: number): number {
-  const f = FEES[store][pay];
+export function feeFor(store: StoreId, pay: Pay, priceUSD: number, table: FeeTable = FEES): number {
+  const f = table[store][pay];
   return round2((priceUSD * f.pct) / 100 + f.fixed);
+}
+
+/** Una compra confirmada: precio sin comisión y comisión pagada, en USD. */
+export interface FeeSample { net: number; fee: number; at: number }
+/** Lo aprendido por tienda y forma de pago. */
+export type Learned = Partial<Record<StoreId, Partial<Record<Pay, FeeSample[]>>>>;
+
+/** ¿Es creíble esta compra para aprender de ella? Descarta errores al teclear el total. */
+export function plausible(net: number, paid: number): boolean {
+  const fee = paid - net;
+  return net > 0 && fee >= -0.02 && fee <= net * 0.25 + 2;
+}
+
+/**
+ * Comisión a partir de compras reales. Con una sola compra (o todas del mismo precio) se mantiene la parte fija
+ * estimada y se ajusta el porcentaje; con precios distintos se calculan las dos por mínimos cuadrados.
+ */
+export function fitFee(samples: FeeSample[], est: Fee): Fee {
+  const s = samples.filter((x) => x.net > 0);
+  if (!s.length) return est;
+  const n = s.length;
+  const mx = s.reduce((t, x) => t + x.net, 0) / n;
+  const my = s.reduce((t, x) => t + x.fee, 0) / n;
+  const sxx = s.reduce((t, x) => t + (x.net - mx) ** 2, 0);
+  if (n >= 2 && sxx > 1) {
+    const slope = s.reduce((t, x) => t + (x.net - mx) * (x.fee - my), 0) / sxx;
+    const fixed = my - slope * mx;
+    if (slope >= 0 && fixed >= -0.01) return { pct: Math.round(slope * 1000) / 10, fixed: round2(Math.max(0, fixed)) };
+  }
+  if (my <= 0.005) return { pct: 0, fixed: 0 };
+  const fixed = est.fixed < my ? est.fixed : 0;
+  return { pct: Math.max(0, Math.round(((my - fixed) / mx) * 1000) / 10), fixed };
+}
+
+/** Tabla de comisiones con lo aprendido encima de lo estimado, y desde cuándo está comprobada cada tienda. */
+export function mergeFees(learned: Learned, pay: Pay): { table: FeeTable; checked: Partial<Record<StoreId, number>> } {
+  const table = structuredClone(FEES);
+  const checked: Partial<Record<StoreId, number>> = {};
+  for (const store of Object.keys(FEES) as StoreId[]) {
+    for (const p of ['card', 'paypal'] as Pay[]) {
+      const s = learned[store]?.[p];
+      if (!s?.length) continue;
+      table[store][p] = fitFee(s, FEES[store][p]);
+      // Comprobada con la forma de pago que usas ahora; se muestra la compra más reciente.
+      if (p === pay) checked[store] = Math.max(...s.map((x) => x.at));
+    }
+  }
+  return { table, checked };
 }

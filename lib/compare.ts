@@ -1,11 +1,11 @@
-import { feeFor, FEES, round2 } from './fees';
+import { feeFor, FEES, round2, type FeeTable } from './fees';
 import { sameGame } from './match';
 import { regionFit } from './region';
 import type { Compare, Coupon, Game, Offer, Pay, Rates, RawOffer, Settings, StoreId } from './types';
 import { STORES } from './types';
 
 /** Convierte, aplica cupones y comisiones, filtra y ordena. Pura: se prueba sin red. */
-export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, coupons: Coupon[] = []): Offer[] {
+export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, coupons: Coupon[] = [], fees: FeeTable = FEES, now = Date.now()): Offer[] {
   const offers = raw
     .filter((o) => sameGame(game.name, o.title))
     .filter((o) => o.dlc === undefined || game.isDlc === undefined || o.dlc === game.isDlc)
@@ -13,12 +13,12 @@ export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, cou
     .filter((o) => s.accounts || o.kind !== 'account')
     .map((o): Offer => {
       const priceUSD = round2(o.currency === 'EUR' ? o.price / rates.EUR : o.price);
-      const cp = bestCoupon(coupons, o.store);
+      const cp = bestCoupon(coupons, o.store, now);
       const couponUSD = cp ? round2((priceUSD * cp.pct) / 100) : 0;
       const net = round2(priceUSD - couponUSD);
-      const feeUSD = feeFor(o.store, s.pay, net);
-      const { fit, text } = regionFit(o);
-      return { ...o, priceUSD, couponUSD, coupon: cp?.code, feeUSD, totalUSD: round2(net + feeUSD), fit, fitText: text };
+      const feeUSD = feeFor(o.store, s.pay, net, fees);
+      const { fit, text, why } = regionFit(o);
+      return { ...o, priceUSD, couponUSD, coupon: cp?.code, feeUSD, totalUSD: round2(net + feeUSD), fit, fitText: text, fitWhy: why };
     });
 
   // Una fila por tienda, tipo y región: la más barata.
@@ -35,8 +35,11 @@ export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, cou
   return list.sort((a, b) => w(a) - w(b) || order[a.fit] - order[b.fit] || a.totalUSD - b.totalUSD);
 }
 
-function bestCoupon(coupons: Coupon[], store: StoreId): Coupon | undefined {
-  return coupons.filter((c) => c.store === store && c.pct > 0 && c.pct < 90).sort((a, b) => b.pct - a.pct)[0];
+/** 4: un cupón caducado deja de restarse. Caduca al terminar el día que dice. */
+export const couponExpired = (c: Coupon, now = Date.now()) => c.expires != null && now > c.expires + 86_400_000;
+
+function bestCoupon(coupons: Coupon[], store: StoreId, now: number): Coupon | undefined {
+  return coupons.filter((c) => c.store === store && c.pct > 0 && c.pct < 90 && !couponExpired(c, now)).sort((a, b) => b.pct - a.pct)[0];
 }
 
 /** G: en un marketplace, una clave un 30 % por debajo de la mediana del resto suele ser robada o revocable. */
@@ -49,6 +52,7 @@ export function flagSuspicious(list: Offer[]): void {
       o.suspicious = true;
       o.fit = 'warn';
       o.fitText = 'Precio sospechoso';
+      o.fitWhy = 'Mucho más barato que el resto de ofertas: suele ser una clave revendida que pueden revocar. Si la compras, que sea con protección del comprador.';
     }
   }
 }
@@ -66,12 +70,18 @@ export async function gather(
   name: string,
   searchers: Partial<Record<StoreId, Searcher>>,
   country: string,
+  onPart?: (p: { raw: RawOffer[]; failed: StoreId[]; pending: StoreId[] }) => void,
 ): Promise<{ raw: RawOffer[]; failed: StoreId[] }> {
+  // 1: cada tienda se entrega en cuanto responde, sin esperar a la más lenta.
   const ids = Object.keys(searchers) as StoreId[];
-  const res = await Promise.allSettled(ids.map((id) => searchers[id]!(name, country)));
   const raw: RawOffer[] = [];
   const failed: StoreId[] = [];
-  res.forEach((r, i) => (r.status === 'fulfilled' ? raw.push(...r.value) : failed.push(ids[i])));
+  const pending = new Set(ids);
+  await Promise.all(ids.map(async (id) => {
+    try { raw.push(...(await searchers[id]!(name, country))); } catch { failed.push(id); }
+    pending.delete(id);
+    onPart?.({ raw: [...raw], failed: [...failed], pending: [...pending] });
+  }));
   return { raw, failed };
 }
 
@@ -86,7 +96,7 @@ export interface CartPlan {
 }
 
 /** Elige tienda por juego para que el total sea mínimo, contando que la parte fija de la comisión se paga una vez por pedido. */
-export function planCart(items: CartItem[], pay: Pay): CartPlan {
+export function planCart(items: CartItem[], pay: Pay, fees: FeeTable = FEES): CartPlan {
   type Opt = { store: StoreId | 'steam'; net: number; url: string };
   const opts: Opt[][] = items.map((it) => {
     const o: Opt[] = [];
@@ -106,7 +116,7 @@ export function planCart(items: CartItem[], pay: Pay): CartPlan {
     let t = 0;
     for (const [st, sub] of per) {
       if (st === 'steam') { t += sub; continue; }
-      const f = FEES[st as StoreId][pay];
+      const f = fees[st as StoreId][pay];
       t += sub + (sub * f.pct) / 100 + f.fixed;
     }
     return round2(t);
