@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ajustes · Where is cheap</title>
+  <meta name="manifest.open_in_tab" content="true">
+</head>
+<body>
+  <main class="wic opt">
+    <header id="brand"></header>
+    <p class="lead">Lo justo para que el precio que ves sea el que pagas. Todo se guarda en este navegador y no sale de él.</p>
+
+    <h2>Tu compra</h2>
+    <section class="field">
+      <label for="country">Región de tu cuenta de Steam</label>
+      <select id="country"><option value="DO">República Dominicana · LATAM-USD</option></select>
+      <small>De momento solo RD. Decide qué claves activan con tu cuenta.</small>
+    </section>
+    <section class="field">
+      <span class="lbl" id="pay-l">Con qué pagas normalmente</span>
+      <div class="seg" role="radiogroup" aria-labelledby="pay-l" data-k="pay">
+        <button type="button" role="radio" data-v="card">Tarjeta</button>
+        <button type="button" role="radio" data-v="paypal">PayPal</button>
+      </div>
+      <small>Cambia la comisión que suma cada tienda.</small>
+    </section>
+    <section class="field">
+      <span class="lbl" id="cur-l">Moneda</span>
+      <div class="seg" role="radiogroup" aria-labelledby="cur-l" data-k="currency">
+        <button type="button" role="radio" data-v="both">USD + RD$</button>
+        <button type="button" role="radio" data-v="usd">Solo USD</button>
+        <button type="button" role="radio" data-v="dop">Solo RD$</button>
+      </div>
+    </section>
+    <section class="sw">
+      <span><label for="marketplaces">Incluir marketplaces</label><small>Eneba, Driffle y Kinguin: suelen ser más baratos; venden terceros.</small></span>
+      <input type="checkbox" id="marketplaces" role="switch">
+    </section>
+    <section class="sw">
+      <span><label for="accounts">Mostrar cuentas de Steam</label><small>No son claves: te dan una cuenta con el juego. Nunca salen como mejor precio.</small></span>
+      <input type="checkbox" id="accounts" role="switch">
+    </section>
+
+    <h2>Avisos de la lista de deseos</h2>
+    <section class="sw">
+      <span><label for="dropAlerts">Avisarme de bajadas fuertes</label><small>Además de los límites que pongas a cada juego. Se revisa cada 6 horas.</small></span>
+      <input type="checkbox" id="dropAlerts" role="switch">
+    </section>
+    <section class="field">
+      <span class="lbl" id="pct-l">Cuánto tiene que bajar frente a Steam</span>
+      <div class="seg" role="radiogroup" aria-labelledby="pct-l" data-k="dropPct">
+        <button type="button" role="radio" data-v="40">−40%</button>
+        <button type="button" role="radio" data-v="50">−50%</button>
+        <button type="button" role="radio" data-v="60">−60%</button>
+        <button type="button" role="radio" data-v="75">−75%</button>
+      </div>
+    </section>
+
+    <h2>Fuera de Steam</h2>
+    <section class="sw">
+      <span><label for="detectAnywhere">Detectar juegos en otras páginas</label><small>YouTube, Twitch, Reddit, Metacritic, IGN… Aparece una etiqueta abajo a la derecha con el mejor precio. Chrome te pedirá permiso para leer las páginas que visitas. Solo actúa en webs de videojuegos, fichas de juegos de Wikipedia y páginas que marcan un videojuego (como la tarjeta de juego de YouTube o la categoría de Twitch); en ellas envía a Steam el nombre del posible juego. Nunca el título de otras páginas.</small></span>
+      <input type="checkbox" id="detectAnywhere" role="switch">
+    </section>
+    <section class="field">
+      <span class="lbl">Panel lateral</span>
+      <p class="txt"><kbd>Alt</kbd> + <kbd>W</kbd> abre la comparación en un panel a la derecha, que sigue a la pestaña que estés mirando. Puedes cambiar el atajo en <span class="mono">chrome://extensions/shortcuts</span>.</p>
+    </section>
+
+    <h2>Tus cupones</h2>
+    <section class="field">
+      <p class="txt">Cupones que te han funcionado. Se restan del precio de esa tienda en todas las comparaciones, con la fecha en que lo apuntaste. Bórralos cuando caduquen.</p>
+      <div id="coupons" class="clist"></div>
+      <form id="addCoupon" class="cform">
+        <select id="cStore" aria-label="Tienda"><option value="ig">Instant Gaming</option><option value="eneba">Eneba</option><option value="driffle">Driffle</option><option value="kinguin">Kinguin</option></select>
+        <input id="cCode" placeholder="Código" required maxlength="40" aria-label="Código">
+        <input id="cPct" type="number" min="1" max="80" step="1" placeholder="%" required aria-label="Descuento en %">
+        <button type="submit" class="go">Añadir</button>
+      </form>
+    </section>
+
+    <p id="saved" class="saved" aria-live="polite"></p>
+  </main>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

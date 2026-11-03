@@ -1,0 +1,37 @@
+html, body { margin: 0; background: #17141a; }
+.wic { width: 390px; min-height: 260px; padding: 0 0 12px; }
+.wic.panelmode { width: auto; min-height: 100vh; }
+header { display: flex; align-items: center; gap: 9px; padding: 13px 14px; border-bottom: 1px solid #2c2730; }
+.brand { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+header .chip { margin-left: auto; }
+.gear { background: none; border: 0; color: var(--mute); font-size: 16px; padding: 2px 4px; }
+.gear:hover { color: var(--ink); }
+.tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid #2c2730; }
+.tabs button { background: none; border: 0; color: var(--mute); font-size: 13px; font-weight: 500; padding: 10px 10px; }
+.tabs button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--tag); }
+.game { padding: 12px 14px 4px; display: grid; gap: 1px; }
+.game b { font-size: 16px; }
+.mute { color: var(--mute); font-size: 12px; }
+.okc { color: var(--save); }
+.pad { padding: 8px 12px 0; }
+.list { padding: 4px 12px 0; }
+.sum { margin: 10px 12px 0; padding: 10px 12px; border-radius: 10px; background: #141117; border: 1px solid #2c2730; font-size: 13px; }
+.save { color: var(--save); font-family: var(--f-mono); }
+.foot { margin: 8px 14px 0; }
+.empty { padding: 28px 22px; display: grid; gap: 8px; justify-items: start; }
+.empty b { font-size: 15px; }
+.empty p { margin: 0; color: var(--mute); font-size: 13px; }
+
+/* lista de deseos y ahorro */
+.wishhead { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; }
+.go.sm { padding: 6px 10px; font-size: 12px; margin-left: auto; }
+.wlist { display: grid; gap: 6px; padding: 0 12px; }
+.wrow { display: flex; align-items: center; gap: 10px; background: var(--row); border: 1px solid #302a35; border-radius: 10px; padding: 8px 10px; }
+.wrow.hit { border-color: var(--save); }
+.wrow .ir { border: 0; text-align: center; }
+.lim { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--mute); flex: none; }
+.lim input { width: 58px; background: #141117; border: 1px solid #38323e; border-radius: 7px; color: var(--ink); font: 500 12.5px var(--f-mono); padding: 5px 6px; }
+.q { font-size: 11.5px; color: var(--mute); flex: none; }
+.big { padding: 16px 14px 10px; display: grid; gap: 2px; }
+.big b { font-size: 30px; }
+.sh { font-size: 12px; font-weight: 600; color: var(--mute); text-transform: uppercase; letter-spacing: .08em; margin: 12px 14px 6px; }

@@ -1,0 +1,87 @@
+/* Where is cheap: grafito cálido, la etiqueta ámbar es la marca y el verde solo significa ahorro. */
+:host, .wic {
+  --bg: #17141a; --panel: #1c1720; --row: #221e26; --line: #322d36; --ink: #f3eee8; --mute: #a69ea6;
+  --tag: #ffb547; --tag-ink: #2a1a00; --save: #45d69b; --bad: #ff6b6b; --warn: #ffd166;
+  --f-body: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --f-mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  color-scheme: dark;
+}
+.wic, .wic * { box-sizing: border-box; }
+.wic { font-family: var(--f-body); color: var(--ink); font-size: 13px; line-height: 1.4; }
+.wic a { color: inherit; text-decoration: none; }
+.wic button { font: inherit; cursor: pointer; }
+.wic :focus-visible { outline: 2px solid var(--tag); outline-offset: 2px; }
+
+/* franja */
+.strip { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; border-radius: 10px; background: var(--panel);
+  border: 1px solid #4a3a20; box-shadow: 0 0 0 1px rgba(255,181,71,.10), 0 8px 24px rgba(0,0,0,.35); }
+.strip .tx { min-width: 0; }
+.t1 { font-size: 14.5px; font-weight: 600; line-height: 1.25; }
+.t1 .num { color: var(--tag); font-family: var(--f-mono); }
+.t2 { font-size: 12px; color: var(--mute); line-height: 1.35; margin-top: 2px; }
+.t2 .ok { color: var(--save); }
+.go { margin-left: auto; flex: none; border: 0; background: var(--tag); color: var(--tag-ink); font-weight: 700; font-size: 13px;
+  border-radius: 7px; padding: 8px 12px; white-space: nowrap; }
+.go.ghost { background: #35303a; color: var(--ink); }
+.spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #4a3a20; border-top-color: var(--tag); animation: wic-spin .8s linear infinite; flex: none; }
+@keyframes wic-spin { to { transform: rotate(360deg); } }
+
+.panel { margin-top: 8px; background: var(--bg); border: 1px solid #3a3240; border-radius: 12px; padding: 10px; }
+.panel[hidden] { display: none; }
+.ph { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--mute); margin: 0 2px 8px; }
+.ph b { color: var(--ink); font-size: 13.5px; }
+
+/* filas */
+.rows { display: grid; gap: 6px; }
+.row { display: flex; align-items: center; gap: 10px; background: var(--row); border: 1px solid #302a35; border-radius: 10px; padding: 8px 10px; min-height: 48px; }
+a.row:hover { border-color: #4b4352; background: #27222b; }
+.row.best { border-color: var(--tag); background: #2a2216; }
+.row.no { opacity: .5; }
+.row.no .pn { text-decoration: line-through; }
+.sb { width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center; font-weight: 700; font-size: 11px; color: #fff; flex: none; }
+.rn { display: grid; line-height: 1.25; min-width: 0; flex: 1 1 auto; }
+.rn b { font-weight: 600; font-size: 13.5px; }
+.rn > span { font-size: 11.5px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rn .chip { justify-self: start; margin-top: 3px; }
+.chip { font-size: 11px; padding: 2px 7px; border-radius: 99px; white-space: nowrap; border: 1px solid transparent; }
+.chip.ok { background: rgba(69,214,155,.12); color: var(--save); border-color: rgba(69,214,155,.25); }
+.chip.no { background: rgba(255,107,107,.12); color: var(--bad); border-color: rgba(255,107,107,.3); }
+.chip.warn { background: rgba(255,209,102,.12); color: var(--warn); border-color: rgba(255,209,102,.3); }
+.chip.gh { background: #2c2731; color: #cfc6cd; }
+.pr { margin-left: auto; text-align: right; display: grid; line-height: 1.2; flex: none; }
+.pn { font: 600 15px var(--f-mono); font-variant-numeric: tabular-nums; }
+.pf { font: 400 11px var(--f-mono); color: var(--mute); }
+.ir { flex: none; width: 36px; text-align: center; background: #35303a; color: var(--ink); border-radius: 7px; font-size: 12px; font-weight: 600; padding: 6px 0; }
+.row.best .ir { background: var(--tag); color: var(--tag-ink); }
+.ir.ghost { visibility: hidden; }
+
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 10px 2px 0; font-size: 11.5px; color: var(--mute); }
+.foot button { margin-left: auto; background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 7px; padding: 4px 9px; font-size: 12px; }
+.foot button + button { margin-left: 0; }
+
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* logos de tienda */
+img.sb { display: block; border-radius: 7px; object-fit: cover; background: #2c2731; }
+
+/* avisos, veredicto e historial */
+.note { margin-top: 8px; padding: 8px 12px; border-radius: 9px; font-size: 12.5px; border: 1px solid; }
+.note.ok { color: var(--save); border-color: rgba(69,214,155,.3); background: rgba(69,214,155,.08); }
+.note.warn { color: var(--warn); border-color: rgba(255,209,102,.3); background: rgba(255,209,102,.08); }
+.chip.tag { background: var(--tag); color: var(--tag-ink); font-weight: 700; }
+.verdict { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: #d6cfd4; margin: 2px 2px 8px; flex-wrap: wrap; }
+.spark { margin: 0 2px 10px; }
+.spark svg { display: block; background: #141117; border: 1px solid #2c2730; border-radius: 8px; }
+.spark figcaption { font-size: 11px; color: var(--mute); margin-top: 4px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.k { display: inline-block; width: 10px; height: 3px; border-radius: 2px; }
+.k.steam { background: #6c7f96; } .k.best { background: var(--tag); margin-left: 6px; }
+
+/* carrito */
+.cartbox { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; width: 380px; max-width: calc(100vw - 32px); max-height: calc(100vh - 32px); overflow: auto; }
+.cartbox .panel { margin-top: 0; box-shadow: 0 20px 50px rgba(0,0,0,.55); }
+.x { margin-left: auto; background: none; border: 0; color: var(--mute); font-size: 18px; line-height: 1; padding: 0 4px; }
+.tot { display: grid; gap: 4px; margin: 10px 2px 0; font-size: 13px; }
+.tot div { display: flex; justify-content: space-between; color: var(--mute); }
+.tot .num { font-family: var(--f-mono); color: var(--ink); }
+.tot .best { color: var(--ink); font-weight: 600; border-top: 1px solid var(--line); padding-top: 6px; }
+.tot .best .num { color: var(--tag); }

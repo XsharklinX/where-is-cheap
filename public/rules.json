@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        { "header": "Referer", "operation": "set", "value": "https://www.instant-gaming.com/" },
+        { "header": "Origin", "operation": "set", "value": "https://www.instant-gaming.com" }
+      ]
+    },
+    "condition": {
+      "requestDomains": ["qknhp8tc3y-dsn.algolia.net"],
+      "excludedInitiatorDomains": ["instant-gaming.com", "www.instant-gaming.com"],
+      "resourceTypes": ["xmlhttprequest", "other"]
+    }
+  }
+]

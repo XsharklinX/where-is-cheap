@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Where is cheap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Una sola noche: grafito cálido, la etiqueta ámbar es la marca, el verde solo significa ahorro. Maquetas grandes escaladas al ancho; ideas en rejilla de dos. */
+  --bg:#121014; --panel:#1b181e; --panel2:#231f27; --line:#322d36; --ink:#f3eee8; --mute:#a69ea6;
+  --tag:#ffb547; --tag-ink:#2a1a00; --save:#45d69b; --bad:#ff6b6b; --warn:#ffd166;
+  --store:#16202d; --store2:#1f2b3b; --store-ink:#c9d6e3;
+  --f-disp:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --f-body:"Geist","Segoe UI",system-ui,sans-serif;
+  --f-mono:"Geist Mono",ui-monospace,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+h1,h2,h3{font-family:var(--f-disp);text-wrap:balance;margin:0;letter-spacing:-.02em}
+h1{font-size:clamp(40px,7vw,76px);font-weight:800;line-height:.98}
+h2{font-size:clamp(28px,4vw,40px);font-weight:700;line-height:1.08}
+h3{font-size:21px;font-weight:700;line-height:1.2}
+p{margin:0;max-width:66ch}
+.mute{color:var(--mute)}
+.mono,.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+a{color:var(--tag)}
+button{font:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:2px solid var(--tag);outline-offset:2px}
+
+/* ---------- cabecera ---------- */
+header.top{padding:40px 0 28px;display:grid;gap:22px}
+.brand{display:flex;align-items:center;gap:12px;font-family:var(--f-disp);font-weight:700;font-size:20px}
+.brand small{font-family:var(--f-mono);font-size:12px;color:var(--mute);font-weight:400;border:1px solid var(--line);padding:3px 8px;border-radius:99px}
+.lede{font-size:19px;color:#d9d1d6;max-width:62ch}
+.lede b{color:var(--ink)}
+.hl{color:var(--tag)}
+.facts{display:flex;flex-wrap:wrap;gap:10px}
+.fact{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:10px 14px;font-size:14px}
+.fact b{display:block;font-family:var(--f-mono);font-size:20px;color:var(--tag);font-weight:600}
+
+section{padding:56px 0;border-top:1px solid var(--line)}
+.sec-head{display:grid;gap:10px;margin-bottom:26px}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--tag)}
+
+/* ---------- escenario escalable ---------- */
+.fit{position:relative;width:100%;margin:0 auto}
+.stage{position:absolute;left:0;top:0;transform-origin:0 0;overflow:hidden}
+.cap{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+.cap div{border-left:2px solid var(--tag);padding:2px 0 2px 12px;font-size:14px;color:#d6cfd4}
+.cap b{color:var(--ink);display:block;font-size:15px}
+@media (max-width:760px){.cap{grid-template-columns:1fr}}
+
+/* ---------- navegador ---------- */
+.browser{position:absolute;inset:0;background:#0d0c10;border-radius:14px;border:1px solid #2b2830;box-shadow:0 30px 80px rgba(0,0,0,.55);overflow:hidden}
+.chrome{height:46px;background:#211e25;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid #2f2b33}
+.dots{display:flex;gap:6px}.dots i{width:11px;height:11px;border-radius:50%;background:#4a444f;display:block}
+.url{flex:1;height:28px;border-radius:8px;background:#151318;display:flex;align-items:center;gap:8px;padding:0 12px;font-family:var(--f-mono);font-size:12.5px;color:#b9b1b8;white-space:nowrap;overflow:hidden}
+.url svg{flex:none}
+.ext{position:relative;width:30px;height:30px;border-radius:8px;display:grid;place-items:center;background:#2d2931}
+.ext .badge{position:absolute;right:-7px;top:-5px;background:var(--save);color:#05261a;font:600 10px var(--f-mono);padding:1px 4px;border-radius:5px}
+
+/* ---------- tienda ficticia (página de Steam) ---------- */
+.store{position:absolute;left:0;right:0;top:46px;bottom:0;background:linear-gradient(180deg,#1b2838 0%,var(--store) 60%);color:var(--store-ink);font-family:var(--f-body)}
+.snav{height:40px;background:#111a25;display:flex;align-items:center;gap:22px;padding:0 32px;font-size:13px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#9fb3c8}
+.snav .sr{margin-left:auto;width:200px;height:24px;border-radius:4px;background:#2a3a4f;font:400 12px var(--f-body);text-transform:none;letter-spacing:0;color:#7f93a8;display:flex;align-items:center;padding:0 10px}
+.stitle{position:absolute;left:32px;top:54px;font:700 26px var(--f-body);color:#fff;letter-spacing:-.01em}
+canvas.art{display:block;border-radius:4px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{background:#2b4058;color:#9ec3e6;font-size:11px;padding:2px 8px;border-radius:3px}
+.buy{position:absolute;background:linear-gradient(90deg,#2a3c52,#22324a);border-radius:4px;display:flex;align-items:center;padding:0 16px;gap:12px}
+.buy .bt{font-size:16px;color:#fff;font-weight:600}
+.buy .pr{margin-left:auto;background:#0f1822;padding:6px 10px;font:600 15px var(--f-mono);color:#e7eef5;border-radius:3px}
+.buy .cart{background:linear-gradient(90deg,#6aa621,#4c8a17);color:#eaffd2;font-size:13px;font-weight:600;padding:8px 14px;border-radius:3px}
+
+/* ---------- la franja inyectada ---------- */
+.strip{position:absolute;display:flex;align-items:center;gap:12px;padding:0 10px 0 12px;border-radius:10px;background:#1c1720;border:1px solid #4a3a20;box-shadow:0 0 0 1px rgba(255,181,71,.12),0 10px 30px rgba(0,0,0,.4);font-family:var(--f-body);color:var(--ink)}
+.strip .t1{font-size:14.5px;font-weight:600;line-height:1.2}
+.strip .t1 .num{color:var(--tag)}
+.strip .t2{font-size:12px;color:var(--mute);line-height:1.3}
+.strip .t2 .ok{color:var(--save)}
+.strip .go{margin-left:auto;background:var(--tag);color:var(--tag-ink);font-weight:700;font-size:13px;border-radius:7px;padding:8px 12px;white-space:nowrap}
+
+/* ---------- filas de tiendas ---------- */
+.rows{display:grid;gap:6px}
+.row{display:flex;align-items:center;gap:10px;background:#221e26;border:1px solid #302a35;border-radius:10px;padding:8px 10px;height:46px;font-size:13px;color:var(--ink)}
+.row.best{border-color:var(--tag);background:#2a2216}
+.row.dead{opacity:.45}
+.row.dead .pn{text-decoration:line-through}
+.sb{width:28px;height:28px;border-radius:7px;display:grid;place-items:center;font:700 11px var(--f-body);color:#fff;flex:none}
+.rn{display:grid;line-height:1.2;min-width:0}
+.rn b{font-weight:600;font-size:13.5px;white-space:nowrap}
+.rn span{font-size:11.5px;color:var(--mute);white-space:nowrap}
+.chip{font:500 11px var(--f-body);padding:2px 7px;border-radius:99px;white-space:nowrap;border:1px solid transparent}
+.chip.ok{background:rgba(69,214,155,.12);color:var(--save);border-color:rgba(69,214,155,.25)}
+.chip.no{background:rgba(255,107,107,.12);color:var(--bad);border-color:rgba(255,107,107,.3)}
+.chip.wa{background:rgba(255,209,102,.12);color:var(--warn);border-color:rgba(255,209,102,.3)}
+.chip.tg{background:var(--tag);color:var(--tag-ink);font-weight:700}
+.chip.gh{background:#2c2731;color:#cfc6cd}
+.pr2{margin-left:auto;text-align:right;line-height:1.15}
+.pn{font:600 15px var(--f-mono);font-variant-numeric:tabular-nums}
+.pf{font:400 11px var(--f-mono);color:var(--mute)}
+.ir{background:#35303a;color:var(--ink);border-radius:7px;font-size:12px;font-weight:600;padding:6px 10px}
+.row.best .ir{background:var(--tag);color:var(--tag-ink)}
+
+/* ---------- panel hero ---------- */
+.hpanel{position:absolute;background:#17141a;border:1px solid #3a3240;border-radius:14px;box-shadow:0 30px 70px rgba(0,0,0,.6);padding:12px;opacity:0}
+.hpanel .ph{display:flex;align-items:center;gap:10px;height:30px;margin-bottom:8px;font-size:13px;color:var(--mute)}
+.hpanel .ph b{color:var(--ink);font-size:14px}
+.toast{position:absolute;background:#2a2430;border:1px solid #463c4c;border-radius:10px;padding:10px 14px;font-size:13px;color:var(--ink);display:flex;gap:10px;align-items:center;opacity:0;box-shadow:0 12px 30px rgba(0,0,0,.5)}
+.cursor{position:absolute;left:0;top:0;width:22px;height:22px;z-index:20;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}
+.cursor svg{display:block;transform-origin:2px 2px}
+
+/* animación del hero: 9 s */
+.hero .cursor{animation:hCur 9s infinite ease-in-out}
+.hero .cursor svg{animation:press 9s infinite}
+.hero .hpanel{animation:hPanel 9s infinite}
+.hero .toast{animation:hToast 9s infinite}
+@keyframes hCur{0%,10%{transform:translate(780px,330px)}22%,27%{transform:translate(500px,500px)}42%,88%{transform:translate(536px,214px)}100%{transform:translate(780px,330px)}}
+@keyframes press{0%,24%{transform:scale(1)}25.5%{transform:scale(.78)}27%,45%{transform:scale(1)}46.5%{transform:scale(.78)}48%,100%{transform:scale(1)}}
+@keyframes hPanel{0%,26%{opacity:0;transform:translateY(16px) scale(.98)}31%,86%{opacity:1;transform:none}91%,100%{opacity:0;transform:translateY(16px) scale(.98)}}
+@keyframes hToast{0%,47%{opacity:0;transform:translateY(-10px)}51%,82%{opacity:1;transform:none}86%,100%{opacity:0;transform:translateY(-10px)}}
+
+/* ---------- tabla de comparación ---------- */
+.vs{width:100%;border-collapse:collapse;font-size:15px}
+.vs th,.vs td{text-align:left;padding:14px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+.vs th{font:500 12px var(--f-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mute)}
+.vs td:first-child{color:var(--mute);width:18%}
+.vs td:nth-child(2){color:#bdb4bb;width:36%}
+.vs td:nth-child(3){color:var(--ink)}
+.vs td:nth-child(3)::before{content:"";display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--tag);margin-right:9px;transform:translateY(-1px)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--panel)}
+
+/* ---------- ideas ---------- */
+.group{margin-top:34px}
+.group > .gh{display:flex;align-items:baseline;gap:12px;margin-bottom:16px}
+.group > .gh span{font:500 12px var(--f-mono);color:var(--mute)}
+.ideas{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+@media (max-width:860px){.ideas{grid-template-columns:1fr}}
+.idea{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;display:grid;gap:14px;align-content:start;transition:border-color .2s}
+.idea[data-v="si"]{border-color:var(--save)}
+.idea[data-v="no"]{border-color:#4a3a3a;opacity:.7}
+.idea .mock{background:#0f0d12;border-radius:12px;overflow:hidden;border:1px solid #29252d}
+.idea .ih{display:flex;gap:10px;align-items:baseline}
+.idea .ih .n{font:600 12px var(--f-mono);color:var(--tag)}
+.idea p{font-size:14.5px;color:#d3cbd1}
+.idea .why{font-size:13px;color:var(--mute)}
+.vote{display:flex;gap:8px}
+.vote button{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;padding:8px 10px;font-size:14px;font-weight:600}
+.vote button[aria-pressed="true"].si{background:rgba(69,214,155,.15);border-color:var(--save);color:var(--save)}
+.vote button[aria-pressed="true"].no{background:rgba(255,107,107,.12);border-color:var(--bad);color:var(--bad)}
+
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:860px){.mini{grid-template-columns:1fr}}
+.mini .idea{gap:10px}
+.prev{background:#0f0d12;border:1px solid #29252d;border-radius:10px;padding:12px;font-size:13px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:62px}
+
+/* mini escenas */
+.ms{background:#141117;font-family:var(--f-body);color:var(--ink)}
+.ms .bar{position:absolute;left:0;right:0;top:0;height:50px;display:flex;align-items:center;gap:10px;padding:0 16px;border-bottom:1px solid #29242d;font-size:13px}
+.ms .bar b{font-size:14px}
+.tog{margin-left:auto;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute)}
+.tog i{width:32px;height:18px;border-radius:99px;background:#3a3440;position:relative;display:block}
+.tog i::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#bbb}
+.abs{position:absolute}
+
+/* idea A · precio en caja (8 s) */
+.ia .row{position:absolute;left:16px;right:16px;top:0}
+.ia .r1{animation:a1 8s infinite ease-in-out}.ia .r2{animation:a2 8s infinite ease-in-out}.ia .r3{animation:a3 8s infinite ease-in-out}.ia .r4{animation:a4 8s infinite ease-in-out}
+@keyframes a1{0%,30%{transform:translateY(64px)}44%,86%{transform:translateY(232px)}96%,100%{transform:translateY(64px)}}
+@keyframes a2{0%,30%{transform:translateY(120px)}44%,86%{transform:translateY(176px)}96%,100%{transform:translateY(120px)}}
+@keyframes a3{0%,30%{transform:translateY(176px)}44%,86%{transform:translateY(120px)}96%,100%{transform:translateY(176px)}}
+@keyframes a4{0%,30%{transform:translateY(232px)}44%,86%{transform:translateY(64px)}96%,100%{transform:translateY(232px)}}
+.on8{animation:on8 8s infinite}.off8{animation:off8 8s infinite}
+@keyframes on8{0%,30%{opacity:0}38%,86%{opacity:1}94%,100%{opacity:0}}
+@keyframes off8{0%,30%{opacity:1}38%,86%{opacity:0}94%,100%{opacity:1}}
+.ia .tog i{animation:togbg 8s infinite}.ia .tog i::after{animation:togk 8s infinite}
+@keyframes togbg{0%,26%{background:#3a3440}32%,88%{background:var(--tag)}94%,100%{background:#3a3440}}
+@keyframes togk{0%,26%{transform:none;background:#bbb}32%,88%{transform:translateX(14px);background:#2a1a00}94%,100%{transform:none;background:#bbb}}
+.ia .r1{animation-name:a1}
+.ia .dim{animation:dim8 8s infinite}
+@keyframes dim8{0%,32%{opacity:1}40%,86%{opacity:.42}94%,100%{opacity:1}}
+.ia .bestb{animation:best8 8s infinite}
+@keyframes best8{0%,40%{border-color:#302a35;background:#221e26}46%,86%{border-color:var(--tag);background:#2a2216}94%,100%{border-color:#302a35;background:#221e26}}
+.stack{position:relative;display:inline-grid}
+.stack > *{grid-area:1/1;text-align:right}
+
+/* idea B · región */
+.ib .scan{position:absolute;left:0;right:0;height:46px;background:linear-gradient(180deg,rgba(255,181,71,0),rgba(255,181,71,.16),rgba(255,181,71,0));animation:scan 8s infinite linear}
+@keyframes scan{0%{top:40px;opacity:0}5%{opacity:1}45%{top:300px;opacity:1}50%,100%{top:300px;opacity:0}}
+.ib .pop{animation:pop 8s infinite both}
+@keyframes pop{0%,4%{opacity:0;transform:scale(.6)}9%,88%{opacity:1;transform:none}95%,100%{opacity:0;transform:scale(.6)}}
+
+/* idea C · detección fuera de Steam */
+.ic .word{border-bottom:2px dotted var(--tag);color:#fff;animation:wordhl 8s infinite}
+@keyframes wordhl{0%,24%{background:transparent}30%,86%{background:rgba(255,181,71,.18)}92%,100%{background:transparent}}
+.ic .hc{position:absolute;opacity:0;animation:hc 8s infinite}
+@keyframes hc{0%,30%{opacity:0;transform:translateY(8px)}36%,86%{opacity:1;transform:none}92%,100%{opacity:0;transform:translateY(8px)}}
+.ic .cursor{animation:cCur 8s infinite ease-in-out}
+@keyframes cCur{0%,8%{transform:translate(360px,270px)}26%,88%{transform:translate(150px,124px)}100%{transform:translate(360px,270px)}}
+
+/* idea D · historial */
+.id .line{stroke-dasharray:900;stroke-dashoffset:900;animation:draw 8s infinite ease-out}
+@keyframes draw{0%{stroke-dashoffset:900}40%,88%{stroke-dashoffset:0}96%,100%{stroke-dashoffset:900}}
+.id .verd{animation:verd 8s infinite}
+@keyframes verd{0%,40%{opacity:0;transform:translateY(8px)}48%,88%{opacity:1;transform:none}95%,100%{opacity:0}}
+
+/* idea E · alertas */
+.ie .fill{animation:fillw 8s infinite ease-in-out}
+@keyframes fillw{0%,10%{width:58%}36%,88%{width:100%}96%,100%{width:58%}}
+.ie .tst{position:absolute;right:14px;bottom:14px;width:290px;animation:tst 8s infinite cubic-bezier(.2,.9,.3,1)}
+@keyframes tst{0%,36%{transform:translateX(330px)}44%,86%{transform:none}94%,100%{transform:translateX(330px)}}
+.ie .pnow{animation:pnow 8s infinite}
+@keyframes pnow{0%,30%{color:var(--ink)}36%,88%{color:var(--save)}96%,100%{color:var(--ink)}}
+
+/* idea F · carrito */
+.if .barA{animation:barA 8s infinite ease-out}.if .barB{animation:barB 8s infinite ease-out}
+@keyframes barA{0%,10%{width:0}34%,90%{width:100%}97%,100%{width:0}}
+@keyframes barB{0%,40%{width:0}62%,90%{width:96.5%}97%,100%{width:0}}
+.if .mv{animation:mv 8s infinite ease-in-out}
+@keyframes mv{0%,40%{opacity:0;transform:translateX(-10px)}50%,90%{opacity:1;transform:none}97%,100%{opacity:0}}
+
+/* idea G · vendedores */
+.ig .warnrow{animation:warnrow 8s infinite}
+@keyframes warnrow{0%,30%{border-color:#302a35}38%,88%{border-color:var(--bad)}95%,100%{border-color:#302a35}}
+
+/* idea H · ya es gratis */
+.ih2 .banA{animation:banA 8s infinite}.ih2 .banB{animation:banB 8s infinite}
+@keyframes banA{0%,6%{opacity:0;transform:translateY(-12px)}12%,44%{opacity:1;transform:none}50%,100%{opacity:0;transform:translateY(-12px)}}
+@keyframes banB{0%,52%{opacity:0;transform:translateY(-12px)}58%,92%{opacity:1;transform:none}98%,100%{opacity:0;transform:translateY(-12px)}}
+
+/* ---------- piezas: popup y ajustes ---------- */
+.pop{font-family:var(--f-body)}
+.popup{position:absolute;background:#17141a;border:1px solid #3a3240;border-radius:16px;box-shadow:0 30px 70px rgba(0,0,0,.6);overflow:hidden;color:var(--ink)}
+.ptabs{display:flex;gap:4px;padding:0 14px;border-bottom:1px solid #2c2730}
+.ptabs span{font-size:13px;padding:10px 10px;color:var(--mute);font-weight:500}
+.ptabs span.on{color:var(--ink);box-shadow:inset 0 -2px 0 var(--tag)}
+.opt{position:absolute;background:#1b181e;border:1px solid #332e38;border-radius:16px;overflow:hidden;color:var(--ink)}
+.field{display:grid;gap:6px;padding:12px 18px;border-bottom:1px solid #2a2530}
+.field label{font-size:12px;color:var(--mute)}
+.sel{background:#141117;border:1px solid #38323e;border-radius:9px;padding:9px 12px;font-size:14px;display:flex;justify-content:space-between}
+.seg{display:flex;background:#141117;border:1px solid #38323e;border-radius:9px;padding:3px;gap:3px}
+.seg span{flex:1;text-align:center;font-size:13px;padding:6px;border-radius:7px;color:var(--mute)}
+.seg span.on{background:var(--tag);color:var(--tag-ink);font-weight:700}
+.sw{display:flex;align-items:center;gap:12px;font-size:14px;padding:10px 18px;border-bottom:1px solid #2a2530}
+.sw small{display:block;color:var(--mute);font-size:12px}
+.sw i{margin-left:auto;flex:none;width:36px;height:20px;border-radius:99px;background:#3a3440;position:relative;display:block}
+.sw i::after{content:"";position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#bbb}
+.sw i.on{background:var(--tag)}.sw i.on::after{left:18px;background:#2a1a00}
+
+.parts{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:20px}
+@media (max-width:860px){.parts{grid-template-columns:1fr 1fr}}
+.part{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;font-size:13.5px;color:#cfc7cd}
+.part b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.part .k{font:500 11px var(--f-mono);color:var(--tag)}
+
+/* ---------- arquitectura ---------- */
+.flow{display:grid;grid-template-columns:repeat(5,1fr);gap:0;align-items:stretch}
+@media (max-width:860px){.flow{grid-template-columns:1fr}}
+.node{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;position:relative;font-size:13.5px;color:#cfc7cd;margin:0 14px}
+.node b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+.node .k{font:500 11px var(--f-mono);color:var(--tag);display:block;margin-bottom:4px}
+.node:not(:last-child)::after{content:"";position:absolute;right:-22px;top:50%;width:16px;height:2px;background:var(--tag)}
+@media (max-width:860px){.node{margin:7px 0}.node:not(:last-child)::after{right:auto;left:50%;top:auto;bottom:-12px;width:2px;height:10px}}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:22px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:10px;align-content:start}
+.card ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:14.5px;color:#d3cbd1}
+.card ul b{color:var(--ink)}
+
+.road{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media (max-width:760px){.road{grid-template-columns:1fr}}
+.phase{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--tag);border-radius:12px;padding:16px;display:grid;gap:8px;align-content:start}
+.phase:nth-child(2){border-top-color:#c78a35}.phase:nth-child(3){border-top-color:#7c6030}
+.phase ul{margin:0;padding-left:18px;font-size:14px;color:#d3cbd1;display:grid;gap:5px}
+
+/* ---------- pie de elección ---------- */
+.dock{position:sticky;bottom:0;z-index:50;background:rgba(18,16,20,.94);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.dock .wrap{display:flex;align-items:center;gap:14px;padding-top:12px;padding-bottom:12px;flex-wrap:wrap}
+.dock .cnt{font-size:14px;color:var(--mute)}
+.dock .cnt b{color:var(--ink);font-family:var(--f-mono)}
+.copy{margin-left:auto;background:var(--tag);color:var(--tag-ink);border:0;border-radius:10px;padding:10px 16px;font-weight:700}
+#copied{font-size:13px;color:var(--save)}
+#fallback{display:none;width:100%;height:120px;background:#0f0d12;color:var(--ink);border:1px solid var(--line);border-radius:8px;font:13px var(--f-mono);padding:10px}
+footer{padding:40px 0 70px;color:var(--mute);font-size:13px}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important}
+  .hero .hpanel,.hero .toast,.ic .hc{opacity:1!important}
+  .ib .pop,.id .verd,.if .mv,.ih2 .banA{opacity:1!important}
+  .id .line{stroke-dashoffset:0!important}
+  .if .barA{width:100%}.if .barB{width:96.5%}
+  .ie .tst{transform:none}
+  .hero .cursor{transform:translate(536px,214px)}
+}
+</style>
+</head>
+<body>
+
+<header class="wrap top">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#121014"/><path d="M15.5 16.5l3 3 5-6" fill="none" stroke="#121014" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Where is cheap <small>propuesta de diseño · 2 nov 2026</small>
+  </div>
+  <h1>Abres un juego en Steam.<br><span class="hl">Ya sabes dónde sale más barato.</span></h1>
+  <p class="lede">Una extensión que reconoce el juego que tienes delante, en Steam o en cualquier página, y te dice <b>cuánto pagarías de verdad</b> en Eneba, Instant Gaming, Loaded, Driffle, Kinguin y las demás: con comisiones, con tu forma de pago y comprobando que <b>la clave activa en tu región</b>. Un clic y estás en la tienda.</p>
+  <div class="facts">
+    <div class="fact"><b>1 clic</b>de la ficha de Steam a la tienda más barata</div>
+    <div class="fact"><b>$13.20</b>precio real en caja, no el anunciado</div>
+    <div class="fact"><b>RD · USD</b>región y moneda de tu cuenta, con RD$ al lado</div>
+    <div class="fact"><b>0</b>anuncios y patrocinados por delante del precio</div>
+  </div>
+  <p class="mute" style="font-size:13px">Juegos, estudios y precios de las maquetas son de ejemplo. Las tiendas son las reales que compararía.</p>
+</header>
+
+<!-- ================= HERO ================= -->
+<section class="wrap" style="border-top:0;padding-top:10px">
+  <div class="fit"><div class="stage hero" data-w="960" data-h="560">
+    <div class="browser">
+      <div class="chrome">
+        <div class="dots"><i></i><i></i><i></i></div>
+        <div class="url"><svg width="12" height="12" viewBox="0 0 12 12"><rect x="2" y="5" width="8" height="6" rx="1.5" fill="#8a8290"/><path d="M4 5V3.6a2 2 0 0 1 4 0V5" stroke="#8a8290" stroke-width="1.4" fill="none"/></svg>store.steampowered.com/app/2471380/Mareas_de_Ceniza/</div>
+        <div class="ext" title="Where is cheap"><svg width="18" height="18" viewBox="0 0 34 34"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#2d2931"/></svg><span class="badge">−56%</span></div>
+      </div>
+      <div class="store">
+        <div class="snav"><span>Tienda</span><span>Novedades</span><span>Categorías</span><span>Rebajas</span><div class="sr">buscar en la tienda</div></div>
+        <div class="stitle">Mareas de Ceniza</div>
+        <canvas class="art abs" data-scene="marea" data-seed="7" data-w="540" data-h="262" style="left:32px;top:96px"></canvas>
+        <div class="abs" style="left:592px;top:96px;width:336px;display:grid;gap:10px">
+          <canvas class="art" data-scene="marea" data-seed="3" data-w="336" data-h="150"></canvas>
+          <p style="font-size:13px;line-height:1.45;color:#acc0d3">Un farero recorre una costa cubierta de ceniza para encender las luces que guían a los últimos barcos. Aventura de exploración con mareas que cambian el mapa.</p>
+          <div style="font-size:12px;color:#7f96ad;display:grid;gap:2px"><span>Reseñas: <span style="color:#66c0f4">Muy positivas</span> (12.408)</span><span>Lanzamiento: 14 mar 2026 · Estudio Faro Gris</span></div>
+          <div class="tags"><span>Aventura</span><span>Exploración</span><span>Atmosférico</span><span>Indie</span></div>
+        </div>
+        <div class="buy" style="left:32px;top:372px;width:540px;height:56px"><span class="bt">Comprar Mareas de Ceniza</span><span class="pr">$29.99</span><span class="cart">Añadir al carro</span></div>
+        <!-- franja inyectada por la extensión -->
+        <div class="strip" style="left:32px;top:440px;width:540px;height:58px">
+          <svg width="26" height="26" viewBox="0 0 34 34"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#1c1720"/></svg>
+          <div><div class="t1">Desde <span class="num">$13.20</span> en Instant Gaming</div><div class="t2">−56% frente a Steam · <span class="ok">activa en República Dominicana</span> · ≈ RD$ 830</div></div>
+          <span class="go">Ver 6 tiendas ▾</span>
+        </div>
+        <div class="abs" style="left:592px;top:372px;width:336px;font-size:12px;color:#7f96ad;line-height:1.5">
+          <div style="color:#acc0d3;font-weight:600;margin-bottom:4px">La franja no tapa nada de Steam</div>
+          Se coloca bajo el botón de compra con los colores de la extensión, para que se distinga de la tienda y nunca parezca un botón de Steam.
+        </div>
+      </div>
+      <!-- panel desplegado -->
+      <div class="hpanel" style="left:32px;top:132px;width:540px;height:356px">
+        <div class="ph"><b>6 tiendas</b>· ordenado por lo que pagas con tarjeta<span class="chip gh" style="margin-left:auto">RD · USD</span></div>
+        <div class="rows" id="heroRows"></div>
+      </div>
+      <div class="toast" style="right:22px;top:58px"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 8.5l3 3 7-7" stroke="#45d69b" stroke-width="2" fill="none" stroke-linecap="round"/></svg><div>Abriendo <b>Instant Gaming</b> en una pestaña nueva<br><span class="mute" style="font-size:12px">Enlace de afiliado, mismo precio para ti</span></div></div>
+      <div class="cursor"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 2l7.5 18 2.6-7.4L19.5 10Z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg></div>
+    </div>
+  </div></div>
+  <div class="cap">
+    <div><b>1 · Lo detecta solo</b>Lee el número de la app en la dirección de Steam. Sin buscar nada, sin abrir la extensión.</div>
+    <div><b>2 · Te dice cuánto pagas</b>La franja da el precio final y si la clave funciona con tu cuenta. El panel ordena las seis tiendas.</div>
+    <div><b>3 · Te lleva</b>«Ir» abre la ficha exacta del juego en esa tienda, en la misma edición, lista para pagar.</div>
+  </div>
+</section>
+
+<!-- ================= POR QUÉ GANA ================= -->
+<section class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Dónde nos diferenciamos</span>
+    <h2>Las demás extensiones te enseñan el precio más bajo. Esta te enseña el que vas a pagar.</h2>
+    <p class="mute">Las comparadoras de claves que hay hoy fallan en lo mismo: el precio anunciado no es el de la caja, la región está en letra pequeña y lo patrocinado sale primero.</p>
+  </div>
+  <div class="tbl"><table class="vs">
+    <thead><tr><th>Tema</th><th>Lo habitual</th><th>Where is cheap</th></tr></thead>
+    <tbody>
+      <tr><td>Precio</td><td>El anunciado. La comisión de servicio y la de PayPal aparecen al pagar.</td><td>El total en caja con tu forma de pago. El orden cambia según pagues con tarjeta o PayPal.</td></tr>
+      <tr><td>Región</td><td>«Global» o «EU» en una etiqueta que hay que saber leer.</td><td>Un semáforo contra tu cuenta de Steam. Lo que no activa en RD sale tachado y abajo.</td></tr>
+      <tr><td>Orden</td><td>Ofertas destacadas y patrocinadas arriba.</td><td>Solo por precio final. Los enlaces de afiliado se marcan y nunca cambian el orden.</td></tr>
+      <tr><td>Dónde aparece</td><td>Solo en la ficha de Steam.</td><td>En Steam y en cualquier página que nombre el juego: tráileres, foros, reseñas, la lista de deseos.</td></tr>
+      <tr><td>Decidir</td><td>El precio de hoy.</td><td>Historial, próximas rebajas y una respuesta clara: compra ahora o espera.</td></tr>
+      <tr><td>Confianza</td><td>Todas las ofertas parecen iguales.</td><td>Tipo de producto (clave, regalo o cuenta), nota del vendedor y activaciones confirmadas por gente de tu país.</td></tr>
+      <tr><td>Moneda</td><td>USD o EUR.</td><td>USD, que es lo que cobra Steam en RD, con el equivalente en RD$ al lado.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ================= IDEAS ================= -->
+<section class="wrap" id="ideas">
+  <div class="sec-head">
+    <span class="eyebrow">Las ideas, una por una</span>
+    <h2>Marca Sí o No en cada una</h2>
+    <p class="mute">Abajo tienes un botón para copiar lo que elijas y pegármelo. Con eso cierro el alcance de la primera versión.</p>
+  </div>
+
+  <div class="group"><div class="gh"><h3>Pagar lo justo</h3><span>lo que hace que la cifra sea de fiar</span></div>
+  <div class="ideas">
+    <!-- A -->
+    <article class="idea" data-id="A" data-name="Precio real en caja">
+      <div class="mock"><div class="fit"><div class="stage ms ia" data-w="460" data-h="300">
+        <div class="bar"><b>Mareas de Ceniza</b><span class="mute">4 tiendas</span><span class="tog">Precio en caja <i></i></span></div>
+        <div class="row r1 dim"><span class="sb" style="background:#239e63">DR</span><span class="rn"><b>Driffle</b><span><span class="stack"><span class="off8">Clave Steam · Europa</span><span class="on8" style="color:var(--bad);text-align:left">No activa en RD</span></span></span></span><span class="pr2"><span class="pn">$11.90</span><div class="pf">sin comisión</div></span></div>
+        <div class="row r2"><span class="sb" style="background:#c9822a">KG</span><span class="rn"><b>Kinguin</b><span>Clave Steam · Global</span></span><span class="pr2"><span class="stack pn"><span class="off8">$12.10</span><span class="on8">$14.15</span></span><div class="pf"><span class="stack"><span class="off8">anunciado</span><span class="on8">+$2.05 comisiones</span></span></div></span></div>
+        <div class="row r3"><span class="sb" style="background:#6b4fe0">EN</span><span class="rn"><b>Eneba</b><span>Clave Steam · LATAM</span></span><span class="pr2"><span class="stack pn"><span class="off8">$12.47</span><span class="on8">$13.57</span></span><div class="pf"><span class="stack"><span class="off8">anunciado</span><span class="on8">+$1.10 comisión</span></span></div></span></div>
+        <div class="row r4 bestb"><span class="sb" style="background:#e5532e">IG</span><span class="rn"><b>Instant Gaming</b><span>Clave Steam · Global</span></span><span class="pr2"><span class="pn">$13.20</span><div class="pf"><span class="stack"><span class="off8">anunciado</span><span class="on8" style="color:var(--save)">total, sin extras</span></span></div></span></div>
+      </div></div></div>
+      <div class="ih"><span class="n">A</span><h3>Precio real en caja</h3></div>
+      <p>Sumamos la comisión de servicio de cada tienda y la de tu forma de pago (tarjeta, PayPal, saldo) y ordenamos por el total. En el ejemplo, el más barato anunciado no activa en RD y el segundo sale más caro con comisiones.</p>
+      <p class="why">Es la diferencia principal. Las comisiones se mantienen en una tabla por tienda y método de pago, revisada cada semana.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+
+    <!-- B -->
+    <article class="idea" data-id="B" data-name="Semáforo de región">
+      <div class="mock"><div class="fit"><div class="stage ms ib" data-w="460" data-h="300">
+        <div class="bar"><b>¿Activa en tu cuenta?</b><span class="chip gh" style="margin-left:auto">Steam · República Dominicana</span></div>
+        <div class="scan"></div>
+        <div class="abs rows" style="left:16px;right:16px;top:62px">
+          <div class="row"><span class="sb" style="background:#e5532e">IG</span><span class="rn"><b>Clave Steam · Global</b><span>Instant Gaming</span></span><span class="pr2"><span class="chip ok pop" style="animation-delay:.3s">Activa en RD</span></span></div>
+          <div class="row"><span class="sb" style="background:#6b4fe0">EN</span><span class="rn"><b>Clave Steam · LATAM</b><span>Eneba</span></span><span class="pr2"><span class="chip ok pop" style="animation-delay:.9s">Activa en RD</span></span></div>
+          <div class="row"><span class="sb" style="background:#239e63">DR</span><span class="rn"><b>Clave Steam · Europa</b><span>Driffle</span></span><span class="pr2"><span class="chip no pop" style="animation-delay:1.5s">No activa en RD</span></span></div>
+          <div class="row"><span class="sb" style="background:#c9822a">KG</span><span class="rn"><b>Regalo de Steam · Turquía</b><span>Kinguin · vendedor externo</span></span><span class="pr2"><span class="chip no pop" style="animation-delay:2.1s">Bloqueo de región</span></span></div>
+          <div class="row"><span class="sb" style="background:#1aa7b8">LD</span><span class="rn"><b>Cuenta de Steam compartida</b><span>Marketplace</span></span><span class="pr2"><span class="chip wa pop" style="animation-delay:2.7s">No es una clave</span></span></div>
+        </div>
+      </div></div></div>
+      <div class="ih"><span class="n">B</span><h3>Semáforo de región</h3></div>
+      <p>Sabemos de qué región es tu cuenta (te lo preguntamos al instalar o lo leemos de la tienda) y comprobamos cada oferta contra ella: verde activa, rojo no, ámbar si no es una clave normal.</p>
+      <p class="why">El miedo nº 1 al comprar claves baratas desde LATAM. Lo rojo se queda en la lista, tachado, para que se vea por qué no sale primero.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+
+    <!-- G -->
+    <article class="idea" data-id="G" data-name="Nota del vendedor">
+      <div class="mock"><div class="fit"><div class="stage ms ig" data-w="460" data-h="300">
+        <div class="bar"><b>Eneba · 3 vendedores</b><span class="mute" style="margin-left:auto;font-size:12px">misma clave, LATAM</span></div>
+        <div class="abs rows" style="left:16px;right:16px;top:62px">
+          <div class="row" style="height:58px"><span class="sb" style="background:#3a6b55">KM</span><span class="rn"><b>KeyMaster</b><span>99,2 % positivas · 48.120 ventas · desde 2019</span></span><span class="pr2"><span class="pn">$13.57</span><div class="pf" style="color:var(--save)">de fiar</div></span></div>
+          <div class="row" style="height:58px"><span class="sb" style="background:#4b5a7a">PX</span><span class="rn"><b>PixelVault</b><span>97,8 % positivas · 9.304 ventas</span></span><span class="pr2"><span class="pn">$13.71</span><div class="pf" style="color:var(--save)">de fiar</div></span></div>
+          <div class="row warnrow" style="height:76px;align-items:flex-start;padding-top:10px"><span class="sb" style="background:#7a3b3b">NK</span><span class="rn"><b>neworld_keys</b><span>71 % positivas · 112 ventas · cuenta de 9 días</span><span style="color:var(--bad);margin-top:4px">Precio 30 % por debajo del resto: suele ser clave robada o revocable</span></span><span class="pr2"><span class="pn">$9.40</span><div class="pf" style="color:var(--bad)">evitar</div></span></div>
+        </div>
+      </div></div></div>
+      <div class="ih"><span class="n">G</span><h3>Nota del vendedor</h3></div>
+      <p>En los marketplaces (Eneba, Kinguin, Driffle) la oferta más barata suele ser de un vendedor nuevo. Damos una nota con sus ventas, antigüedad y valoraciones, y avisamos si el precio es sospechosamente bajo.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+
+    <!-- F -->
+    <article class="idea" data-id="F" data-name="Carrito optimizado">
+      <div class="mock"><div class="fit"><div class="stage ms if" data-w="460" data-h="300">
+        <div class="bar"><b>Tu carrito de Steam · 3 juegos</b><span class="mute" style="margin-left:auto;font-size:12px">Steam: $74.97</span></div>
+        <div class="abs rows" style="left:16px;right:16px;top:60px">
+          <div class="row"><canvas class="art" data-scene="marea" data-seed="5" data-w="46" data-h="28"></canvas><span class="rn"><b>Mareas de Ceniza</b><span>$29.99 en Steam</span></span><span class="pr2"><span class="chip gh">Instant Gaming <span class="mono">13.20</span></span></span></div>
+          <div class="row"><canvas class="art" data-scene="neon" data-seed="2" data-w="46" data-h="28"></canvas><span class="rn"><b>Kilovoltio</b><span>$24.99 en Steam</span></span><span class="pr2"><span class="chip gh">Eneba <span class="mono">8.40</span></span><span class="chip ok mv" style="margin-left:4px">mismo pedido</span></span></div>
+          <div class="row"><canvas class="art" data-scene="duna" data-seed="4" data-w="46" data-h="28"></canvas><span class="rn"><b>Duna Roja</b><span>$19.99 en Steam</span></span><span class="pr2"><span class="chip gh">Eneba <span class="mono">7.80</span></span><span class="chip ok mv" style="margin-left:4px">mismo pedido</span></span></div>
+        </div>
+        <div class="abs" style="left:16px;right:16px;top:218px;display:grid;gap:8px;font-size:12px">
+          <div style="display:grid;grid-template-columns:96px 1fr 60px;align-items:center;gap:8px"><span class="mute">Por separado</span><span style="background:#29242d;border-radius:5px;height:14px;overflow:hidden"><span class="barA" style="display:block;height:100%;background:#6c6270"></span></span><span class="mono" style="text-align:right">$31.60</span></div>
+          <div style="display:grid;grid-template-columns:96px 1fr 60px;align-items:center;gap:8px"><span>Agrupado</span><span style="background:#29242d;border-radius:5px;height:14px;overflow:hidden"><span class="barB" style="display:block;height:100%;background:var(--tag)"></span></span><span class="mono" style="text-align:right;color:var(--save)">$30.50</span></div>
+          <span class="mute mv">Eneba cobra la comisión por pedido: juntar dos juegos ahorra $1.10 más.</span>
+        </div>
+      </div></div></div>
+      <div class="ih"><span class="n">F</span><h3>Carrito optimizado</h3></div>
+      <p>Lee tu carrito o tu lista de deseos de Steam y reparte los juegos entre tiendas para que el total sea el más bajo, teniendo en cuenta que algunas comisiones se cobran una vez por pedido.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+  </div></div>
+
+  <div class="group"><div class="gh"><h3>Detectar y avisar</h3><span>que funcione sin abrir nada</span></div>
+  <div class="ideas">
+    <!-- C -->
+    <article class="idea" data-id="C" data-name="Detección en cualquier página">
+      <div class="mock"><div class="fit"><div class="stage ms ic" data-w="460" data-h="300">
+        <div class="bar" style="height:36px;font-family:var(--f-mono);font-size:11.5px;color:#a69ea6;background:#1d1a21">reddit.com/r/juegos/comments/1qx8/vale_la_pena</div>
+        <div class="abs" style="left:18px;top:52px;right:18px;display:grid;gap:8px">
+          <span class="mute" style="font-size:12px">r/juegos · hace 3 h</span>
+          <div style="font:700 17px var(--f-body);line-height:1.3">¿Vale la pena <span class="word">Kilovoltio</span> a precio completo o espero a rebajas?</div>
+          <canvas class="art" data-scene="neon" data-seed="9" data-w="424" data-h="150"></canvas>
+        </div>
+        <div class="hc" style="left:112px;top:112px;width:300px;background:#1c1720;border:1px solid #4a3a20;border-radius:12px;padding:12px;box-shadow:0 18px 40px rgba(0,0,0,.6);display:grid;gap:8px">
+          <div style="display:flex;gap:10px;align-items:center"><canvas class="art" data-scene="neon" data-seed="2" data-w="64" data-h="30"></canvas><div style="line-height:1.2"><b style="font-size:14px">Kilovoltio</b><div class="mute" style="font-size:11.5px">Steam $24.99</div></div><span class="chip ok" style="margin-left:auto">−66%</span></div>
+          <div style="display:flex;align-items:center;gap:8px;font-size:13px">Desde <b class="mono" style="color:var(--tag)">$8.40</b> en Eneba<span class="ir" style="margin-left:auto;background:var(--tag);color:var(--tag-ink)">Ir</span></div>
+        </div>
+        <div class="cursor"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M2 2l7.5 18 2.6-7.4L19.5 10Z" fill="#fff" stroke="#111" stroke-width="1.3" stroke-linejoin="round"/></svg></div>
+      </div></div></div>
+      <div class="ih"><span class="n">C</span><h3>Detección en cualquier página</h3></div>
+      <p>En YouTube, Reddit, reseñas o la lista de deseos, el nombre del juego queda subrayado. Al pasar el ratón ves el mejor precio. Se apoya en el título de la página y los datos estructurados, y en texto solo cuando el nombre es exacto.</p>
+      <p class="why">Se activa aparte, porque pide permiso para leer todas las páginas. Sin ese permiso, la extensión funciona solo en Steam.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+
+    <!-- D -->
+    <article class="idea" data-id="D" data-name="¿Compro o espero?">
+      <div class="mock"><div class="fit"><div class="stage ms id" data-w="460" data-h="300">
+        <div class="bar"><b>Mareas de Ceniza · últimos 12 meses</b><span class="mute" style="margin-left:auto;font-size:12px">precio más bajo en caja</span></div>
+        <svg class="abs" style="left:0;top:50px" width="460" height="250" viewBox="0 0 460 250">
+          <g stroke="#2a252e" stroke-width="1"><line x1="40" y1="30" x2="440" y2="30"/><line x1="40" y1="90" x2="440" y2="90"/><line x1="40" y1="150" x2="440" y2="150"/><line x1="40" y1="210" x2="440" y2="210"/></g>
+          <g fill="#a69ea6" font-family="Geist Mono, monospace" font-size="10"><text x="8" y="34">$30</text><text x="8" y="94">$20</text><text x="8" y="154">$10</text><text x="14" y="214">$0</text><text x="40" y="232">nov</text><text x="138" y="232">feb</text><text x="236" y="232">may</text><text x="334" y="232">ago</text><text x="420" y="232">nov</text></g>
+          <rect x="88" y="30" width="22" height="180" fill="rgba(255,181,71,.07)"/><rect x="300" y="30" width="22" height="180" fill="rgba(255,181,71,.07)"/>
+          <text x="80" y="24" fill="#c78a35" font-family="Geist, sans-serif" font-size="10">Rebajas invierno</text><text x="290" y="24" fill="#c78a35" font-family="Geist, sans-serif" font-size="10">Verano</text>
+          <path class="line" d="M40 30 L88 30 L92 120 L110 120 L116 30 L300 30 L304 120 L322 120 L326 30 L440 30" fill="none" stroke="#6c7f96" stroke-width="2"/>
+          <path class="line" d="M40 126 L70 128 L88 142 L110 144 L130 128 L180 124 L230 120 L270 126 L300 140 L322 146 L350 130 L400 124 L440 127" fill="none" stroke="#ffb547" stroke-width="2.5"/>
+          <circle cx="440" cy="127" r="4.5" fill="#ffb547"/><circle cx="322" cy="146" r="3.5" fill="#45d69b"/>
+          <text x="330" y="164" fill="#45d69b" font-family="Geist Mono, monospace" font-size="10">mín. $10.90</text>
+          <g font-family="Geist, sans-serif" font-size="10"><rect x="44" y="190" width="10" height="3" fill="#6c7f96"/><text x="58" y="194" fill="#a69ea6">Steam</text><rect x="100" y="190" width="10" height="3" fill="#ffb547"/><text x="114" y="194" fill="#a69ea6">mejor tienda</text></g>
+        </svg>
+        <div class="abs verd" style="left:196px;top:176px;width:248px;background:#1c1720;border:1px solid #4a3a20;border-radius:12px;padding:10px 12px;box-shadow:0 12px 30px rgba(0,0,0,.5)">
+          <div style="display:flex;align-items:center;gap:8px"><span class="chip tg">Espera</span><b style="font-size:13.5px">Rebajas de invierno en 47 días</b></div>
+          <div class="mute" style="font-size:12px;margin-top:4px">En las 2 últimas rebajas bajó a unos $11. Hoy: $13.20.</div>
+        </div>
+      </div></div></div>
+      <div class="ih"><span class="n">D</span><h3>¿Compro o espero?</h3></div>
+      <p>Historial de 12 meses de Steam y de la tienda más barata, con las rebajas marcadas, y una respuesta en una línea basada en lo que el juego hizo en rebajas anteriores. Si no hay historial suficiente, no se inventa nada.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+
+    <!-- E -->
+    <article class="idea" data-id="E" data-name="Alertas de la lista de deseos">
+      <div class="mock"><div class="fit"><div class="stage ms ie" data-w="460" data-h="300">
+        <div class="bar"><b>Lista de deseos · avísame por debajo de</b></div>
+        <div class="abs rows" style="left:16px;right:16px;top:60px">
+          <div class="row"><canvas class="art" data-scene="duna" data-seed="4" data-w="46" data-h="28"></canvas><span class="rn" style="flex:1"><b>Duna Roja</b><span style="display:block;background:#2e2934;border-radius:4px;height:5px;margin-top:5px;overflow:hidden"><span class="fill" style="display:block;height:100%;background:var(--save)"></span></span></span><span class="pr2"><span class="pn pnow">$6.99</span><div class="pf">límite $8</div></span></div>
+          <div class="row"><canvas class="art" data-scene="bosque" data-seed="6" data-w="46" data-h="28"></canvas><span class="rn" style="flex:1"><b>Bosque Hueco</b><span style="display:block;background:#2e2934;border-radius:4px;height:5px;margin-top:5px;overflow:hidden"><span style="display:block;height:100%;width:72%;background:#6c6270"></span></span></span><span class="pr2"><span class="pn">$14.30</span><div class="pf">límite $10</div></span></div>
+          <div class="row"><canvas class="art" data-scene="nieve" data-seed="8" data-w="46" data-h="28"></canvas><span class="rn" style="flex:1"><b>Cumbre Helada</b><span style="display:block;background:#2e2934;border-radius:4px;height:5px;margin-top:5px;overflow:hidden"><span style="display:block;height:100%;width:40%;background:#6c6270"></span></span></span><span class="pr2"><span class="pn">$31.00</span><div class="pf">límite $12</div></span></div>
+        </div>
+        <div class="tst" style="background:#2a2430;border:1px solid #463c4c;border-radius:12px;padding:12px;box-shadow:0 18px 40px rgba(0,0,0,.6);display:flex;gap:10px;align-items:flex-start">
+          <svg width="22" height="22" viewBox="0 0 34 34" style="flex:none"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#2a2430"/></svg>
+          <div style="font-size:12.5px;line-height:1.35"><b>Duna Roja bajó a $6.99</b><br><span class="mute">Loaded · activa en RD · tu límite era $8</span><div style="margin-top:6px;display:flex;gap:6px"><span class="ir" style="background:var(--tag);color:var(--tag-ink)">Comprar</span><span class="ir">Más tarde</span></div></div>
+        </div>
+      </div></div></div>
+      <div class="ih"><span class="n">E</span><h3>Alertas de la lista de deseos</h3></div>
+      <p>Importa tu lista de deseos de Steam en un clic. Pones un límite por juego (o «avísame en cualquier bajada fuerte») y llega una notificación del sistema cuando alguna tienda que activa en RD lo cruza.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+
+    <!-- H -->
+    <article class="idea" data-id="H" data-name="¿Ya es gratis o ya lo tienes?">
+      <div class="mock"><div class="fit"><div class="stage ms ih2" data-w="460" data-h="300" style="background:linear-gradient(180deg,#1b2838,#16202d)">
+        <div class="bar" style="border-color:#24344a;color:#c9d6e3"><b>Bosque Hueco</b><span style="margin-left:auto;font-size:12px;color:#7f96ad">store.steampowered.com</span></div>
+        <canvas class="art abs" data-scene="bosque" data-seed="6" data-w="428" data-h="170" style="left:16px;top:62px"></canvas>
+        <div class="abs" style="left:16px;right:16px;top:242px;height:44px;background:linear-gradient(90deg,#2a3c52,#22324a);border-radius:4px;display:flex;align-items:center;padding:0 14px;color:#fff;font-size:14px">Comprar Bosque Hueco<span class="mono" style="margin-left:auto;background:#0f1822;padding:4px 8px;border-radius:3px">$19.99</span></div>
+        <div class="abs banA" style="left:28px;right:28px;top:76px;background:#12301f;border:1px solid #2f7a52;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:13px"><span class="chip ok">Gratis</span><span><b>Gratis en Epic Games Store</b> hasta el jueves 6 nov</span><span class="ir" style="margin-left:auto;background:var(--save);color:#05261a">Reclamar</span></div>
+        <div class="abs banB" style="left:28px;right:28px;top:76px;background:#1c1720;border:1px solid #4a3a20;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:10px;font-size:13px"><span class="chip tg">Ya lo tienes</span><span>Lo compraste en <b>GOG</b> el 12 mar 2025</span></div>
+      </div></div></div>
+      <div class="ih"><span class="n">H</span><h3>¿Ya es gratis o ya lo tienes?</h3></div>
+      <p>Antes de mostrar precios mira si el juego está gratis esta semana en Epic, si entra en PC Game Pass o en un bundle de Humble, y si ya lo tienes en otra tienda que hayas conectado. El mejor precio a veces es cero.</p>
+      <div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div>
+    </article>
+  </div></div>
+
+  <div class="group"><div class="gh"><h3>Detalles que suman</h3><span>cada uno pequeño, juntos se notan</span></div>
+  <div class="mini">
+    <article class="idea" data-id="I" data-name="Precio en RD$"><div class="prev"><span class="pn" style="color:var(--tag)">$13.20</span><span class="mute">≈ RD$ 830 · tasa de hoy</span></div><div class="ih"><span class="n">I</span><h3>Precio en RD$</h3></div><p>Junto a cada precio en USD, su equivalente en pesos con la tasa del día. Para saber cuánto te cuesta de verdad sin calcularlo.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="J" data-name="Misma edición"><div class="prev"><span class="chip wa">Ojo: esta clave es solo el DLC</span><span class="chip gh">Estándar ≠ Deluxe</span></div><div class="ih"><span class="n">J</span><h3>Misma edición siempre</h3></div><p>Compara la edición que estás mirando en Steam y avisa cuando la oferta barata es otra edición, un DLC suelto o una versión de consola.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="K" data-name="Coste por hora"><div class="prev"><span class="pn">$0.41</span><span class="mute">la hora · 32 h de historia</span></div><div class="ih"><span class="n">K</span><h3>Coste por hora</h3></div><p>Precio final dividido entre la duración media del juego. Ayuda a decidir entre dos juegos con un presupuesto ajustado.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="L" data-name="Cupones verificados"><div class="prev"><span class="chip ok">Código aplicado: −5 %</span><span class="mute">probado hace 2 días</span></div><div class="ih"><span class="n">L</span><h3>Cupones verificados</h3></div><p>Los códigos de descuento que funcionan hoy en cada tienda, ya restados del precio y con la fecha en que se probaron. Si no se ha comprobado, no sale.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="M" data-name="Saldo de Steam más barato"><div class="prev"><span class="mute">Saldo $20 por</span><span class="pn" style="color:var(--save)">$18.60</span><span class="chip ok">activa en RD</span></div><div class="ih"><span class="n">M</span><h3>Saldo de Steam más barato</h3></div><p>Cuando el juego solo se vende en Steam, buscamos tarjetas de saldo con descuento para tu región. Ahorro también en lo que no tiene claves.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="N" data-name="Activaciones de la comunidad"><div class="prev"><span class="chip ok">34 activaciones en RD</span><span class="mute">la última hace 2 días</span></div><div class="ih"><span class="n">N</span><h3>Activó en mi país</h3></div><p>Tras comprar, la extensión pregunta una vez «¿activó bien?». Con las respuestas, cada oferta enseña cuánta gente de tu país la activó sin problemas.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="O" data-name="Ahorro acumulado"><div class="prev"><span class="pn" style="color:var(--save)">$142.30</span><span class="mute">ahorrados en 2026 · 9 juegos</span></div><div class="ih"><span class="n">O</span><h3>Lo que llevas ahorrado</h3></div><p>Un contador en la ventana de la extensión con lo que has ahorrado frente a Steam en cada compra hecha desde «Ir». Solo se guarda en tu navegador.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="P" data-name="Atajo y panel lateral"><div class="prev"><span class="chip gh mono">Alt + W</span><span class="mute">abre la comparación al lado, sin salir de la página</span></div><div class="ih"><span class="n">P</span><h3>Atajo y panel lateral</h3></div><p>El panel lateral del navegador muestra la comparación completa mientras sigues viendo la ficha o el tráiler. Con atajo de teclado.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+    <article class="idea" data-id="Q" data-name="Biblioteca consciente"><div class="prev"><span class="chip tg">Ya lo tienes</span><span class="chip gh">DLC de un juego tuyo</span></div><div class="ih"><span class="n">Q</span><h3>Sabe lo que tienes</h3></div><p>Lee tu biblioteca pública de Steam: no te avisa de juegos que ya tienes y destaca los DLC de los que sí tienes.</p><div class="vote"><button class="si" aria-pressed="false">Sí</button><button class="no" aria-pressed="false">No</button></div></article>
+  </div></div>
+</section>
+
+<!-- ================= PIEZAS ================= -->
+<section class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Estructura</span>
+    <h2>Cinco piezas, una sola forma de leer el precio</h2>
+    <p class="mute">Todas usan la misma fila de tienda: insignia, tipo de clave, semáforo de región, precio en caja y botón «Ir». Lo que aprendes en una sirve en las demás.</p>
+  </div>
+  <div class="fit"><div class="stage pop" data-w="960" data-h="600" style="background:radial-gradient(120% 90% at 30% 20%,#2a2130,#121014 70%);border-radius:18px;border:1px solid var(--line)">
+    <!-- popup -->
+    <div class="popup" style="left:40px;top:30px;width:380px;height:540px">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px">
+        <svg width="24" height="24" viewBox="0 0 34 34"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#17141a"/></svg>
+        <b style="font-family:var(--f-disp);font-size:16px">Where is cheap</b><span class="chip gh" style="margin-left:auto">RD · USD · tarjeta</span>
+      </div>
+      <div style="display:flex;gap:12px;padding:0 16px 12px;align-items:center">
+        <canvas class="art" data-scene="marea" data-seed="3" data-w="120" data-h="56"></canvas>
+        <div style="line-height:1.25"><div class="mute" style="font-size:11.5px">Detectado en esta pestaña</div><b style="font-size:16px">Mareas de Ceniza</b><div style="font-size:12px" class="mute">Edición estándar · Steam $29.99</div></div>
+      </div>
+      <div class="ptabs"><span class="on">Precios</span><span>Historial</span><span>Alertas</span><span>Ajustes</span></div>
+      <div class="rows" id="popRows" style="padding:12px 14px"></div>
+      <div style="position:absolute;left:0;right:0;bottom:0;padding:12px 16px;border-top:1px solid #2c2730;display:flex;align-items:center;gap:8px;font-size:12.5px;background:#141117">
+        <span class="mute">Ahorras</span><b class="mono" style="color:var(--save)">$16.79</b><span class="mute">frente a Steam</span><span class="chip ok" style="margin-left:auto">Espera: rebajas en 47 días</span>
+      </div>
+    </div>
+    <!-- ajustes -->
+    <div class="opt" style="left:460px;top:30px;width:460px;height:540px">
+      <div style="padding:16px 18px;border-bottom:1px solid #2a2530"><b style="font-family:var(--f-disp);font-size:18px">Ajustes</b><div class="mute" style="font-size:12.5px">Tres preguntas al instalar. Todo se guarda en tu navegador.</div></div>
+      <div class="field"><label>Región de tu cuenta de Steam</label><div class="sel">República Dominicana · LATAM-USD <span class="mute">▾</span></div></div>
+      <div class="field"><label>Con qué pagas normalmente (cambia las comisiones)</label><div class="seg"><span class="on">Tarjeta</span><span>PayPal</span><span>Saldo de tienda</span></div></div>
+      <div class="field"><label>Moneda</label><div class="seg"><span class="on">USD + RD$</span><span>Solo USD</span><span>Solo RD$</span></div></div>
+      <div class="sw"><span>Incluir marketplaces<small>Eneba, Kinguin, Driffle: más baratos, con nota del vendedor</small></span><i class="on"></i></div>
+      <div class="sw"><span>Solo vendedores de fiar<small>Oculta notas por debajo del 95 %</small></span><i class="on"></i></div>
+      <div class="sw"><span>Detectar juegos fuera de Steam<small>Pide permiso para leer las páginas que visitas</small></span><i></i></div>
+      <div class="sw"><span>Ocultar lo que ya tengo<small>Lee tu biblioteca pública de Steam</small></span><i class="on"></i></div>
+      <div class="sw" style="border:0"><span>Enlaces de afiliado<small>Mismo precio para ti; sostienen la extensión. Puedes quitarlos</small></span><i class="on"></i></div>
+    </div>
+  </div></div>
+  <div class="parts">
+    <div class="part"><span class="k">en la página</span><b>Franja</b>Una línea bajo el botón de compra de Steam: mejor precio, región, «Ver tiendas».</div>
+    <div class="part"><span class="k">al pulsar el icono</span><b>Ventana</b>Precios, historial, alertas y ajustes del juego de la pestaña.</div>
+    <div class="part"><span class="k">Alt + W</span><b>Panel lateral</b>La misma ventana fija al lado, para comparar mientras navegas.</div>
+    <div class="part"><span class="k">fuera de Steam</span><b>Tarjeta flotante</b>Al pasar el ratón por un nombre de juego detectado.</div>
+    <div class="part"><span class="k">al instalar</span><b>Bienvenida</b>Región, forma de pago e importar la lista de deseos. Tres pasos.</div>
+  </div>
+</section>
+
+<!-- ================= TÉCNICA ================= -->
+<section class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Cómo se construye</span>
+    <h2>Del número de la app a la tienda, en menos de un segundo</h2>
+  </div>
+  <div class="flow">
+    <div class="node"><span class="k">1 · página</span><b>Detector</b>Script de contenido. En Steam lee el id de la URL. Fuera, el título, los datos estructurados y og:title.</div>
+    <div class="node"><span class="k">2 · navegador</span><b>Service worker</b>Pide precios solo por id, guarda en caché 30 min y aplica tus reglas de región y pago.</div>
+    <div class="node"><span class="k">3 · servidor</span><b>Agregador propio</b>Normaliza las tiendas, empareja ediciones por id de Steam, calcula comisiones y guarda el historial.</div>
+    <div class="node"><span class="k">4 · fuentes</span><b>Tiendas</b>Feeds y APIs de afiliados primero; lectura de la web solo donde no haya otra vía.</div>
+    <div class="node"><span class="k">5 · vuelta</span><b>Franja y «Ir»</b>Pinta la franja y abre la ficha exacta con el enlace de afiliado, siempre tras tu clic.</div>
+  </div>
+  <div class="two">
+    <div class="card">
+      <h3>Pila propuesta</h3>
+      <ul>
+        <li><b>Extensión:</b> Manifest V3, TypeScript y WXT para sacar Chrome, Edge, Brave, Opera y Firefox del mismo código. Preact para la ventana y el panel (pesa poco).</li>
+        <li><b>Servidor:</b> Cloudflare Workers con base de datos y caché en el borde. Un rastreo programado por tienda y una tabla de comisiones por tienda y forma de pago.</li>
+        <li><b>Emparejado:</b> todo gira alrededor del id de Steam; cada tienda tiene su tabla de equivalencias con la edición.</li>
+        <li><b>Permisos:</b> solo store.steampowered.com al instalar. «Todas las páginas» se pide aparte, al activar la detección fuera de Steam.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Privacidad y reglas de las tiendas</h3>
+      <ul>
+        <li>Al servidor solo viaja el id del juego y tu región. Ni historial de navegación ni cuenta.</li>
+        <li>La lista de deseos, la biblioteca y el ahorro se quedan en el navegador.</li>
+        <li>La Chrome Web Store exige que el enlace de afiliado salga de un clic tuyo y que se avise. Nunca se sustituye la cookie de afiliado de otro, que es lo que hundió a Honey.</li>
+        <li>La mayoría de estas tiendas tiene programa de afiliados. Es el modelo: ni anuncios ni suscripción.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= FASES ================= -->
+<section class="wrap">
+  <div class="sec-head">
+    <span class="eyebrow">Por dónde empezar</span>
+    <h2>Tres fases</h2>
+    <p class="mute">Lo que marques arriba mueve ideas entre fases. Esta es mi propuesta si todo sale Sí.</p>
+  </div>
+  <div class="road">
+    <div class="phase"><span class="eyebrow">Fase 1 · versión mínima</span><h3>Solo Steam, pero bien</h3><ul><li>Franja, ventana y «Ir»</li><li>6 tiendas: Instant Gaming, Eneba, Loaded, Driffle, Kinguin, Fanatical</li><li>Precio real en caja (A) y semáforo de región (B)</li><li>Misma edición (J) y precio en RD$ (I)</li><li>Bienvenida en tres pasos</li></ul></div>
+    <div class="phase"><span class="eyebrow">Fase 2</span><h3>Decidir y avisar</h3><ul><li>Historial y «¿compro o espero?» (D)</li><li>Lista de deseos con alertas (E)</li><li>Nota del vendedor (G) y cupones (L)</li><li>¿Ya es gratis? (H) y biblioteca (Q)</li><li>Panel lateral y Alt + W (P)</li></ul></div>
+    <div class="phase"><span class="eyebrow">Fase 3</span><h3>Fuera de Steam</h3><ul><li>Detección en cualquier página (C)</li><li>Carrito optimizado (F)</li><li>Activaciones de la comunidad (N)</li><li>Saldo de Steam (M), coste por hora (K), ahorro (O)</li><li>Versión de Firefox publicada</li></ul></div>
+  </div>
+  <div class="two">
+    <div class="card"><h3>Riesgos</h3><ul>
+      <li><b>Leer webs se rompe:</b> por eso los feeds de afiliado van primero y cada tienda tiene una prueba diaria que avisa si cambia.</li>
+      <li><b>Claves revocadas en el mercado gris:</b> nota del vendedor, aviso de precio sospechoso y un ajuste para ver solo tiendas autorizadas.</li>
+      <li><b>Comisiones que cambian:</b> tabla revisada cada semana y fecha visible de la última revisión.</li>
+    </ul></div>
+    <div class="card"><h3>Lo que me falta saber</h3><ul>
+      <li>¿Solo para ti al principio o directa a la Chrome Web Store?</li>
+      <li>¿Entran Fanatical, GamesPlanet y la propia GOG, o solo tiendas de claves?</li>
+      <li>¿Inglés a la par desde la fase 1?</li>
+    </ul></div>
+  </div>
+</section>
+
+<footer class="wrap">Where is cheap · propuesta de diseño. Juegos, estudios, vendedores y precios son ejemplos; las tiendas nombradas son las que se compararían.</footer>
+
+<div class="dock"><div class="wrap">
+  <span class="cnt">Sí: <b id="nSi">0</b> · No: <b id="nNo">0</b> · sin marcar: <b id="nNa">17</b></span>
+  <span id="copied" aria-live="polite"></span>
+  <button class="copy" id="copyBtn" type="button">Copiar mi elección</button>
+  <textarea id="fallback" readonly aria-label="Tu elección para copiar"></textarea>
+</div></div>
+
+<script>
+/* ---------- datos de tiendas ---------- */
+const STORES=[
+  {i:'IG',c:'#e5532e',n:'Instant Gaming',k:'Clave Steam · Global',r:['ok','Activa en RD'],p:'13.20',f:'sin comisión',best:1},
+  {i:'EN',c:'#6b4fe0',n:'Eneba',k:'Clave Steam · LATAM',r:['ok','Activa en RD'],p:'13.57',f:'12.47 + 1.10'},
+  {i:'LD',c:'#1aa7b8',n:'Loaded',k:'Clave Steam · Global',r:['ok','Activa en RD'],p:'13.89',f:'sin comisión'},
+  {i:'KG',c:'#c9822a',n:'Kinguin',k:'Clave · vendedor 99 %',r:['ok','Activa en RD'],p:'14.15',f:'12.10 + 2.05'},
+  {i:'DR',c:'#239e63',n:'Driffle',k:'Clave Steam · Europa',r:['no','No activa en RD'],p:'11.90',f:'no sirve',dead:1},
+  {i:'ST',c:'#3d5d82',n:'Steam',k:'Tienda oficial',r:['gh','Oficial'],p:'29.99',f:'precio de lista'}
+];
+function rowHTML(s,compact){
+  return `<div class="row${s.best?' best':''}${s.dead?' dead':''}"><span class="sb" style="background:${s.c}">${s.i}</span><span class="rn"><b>${s.n}</b><span>${s.k}</span></span>${compact?'':`<span class="chip ${s.r[0]}">${s.r[1]}</span>`}<span class="pr2"><span class="pn">$${s.p}</span><div class="pf">${s.f}</div></span>${s.dead||s.i==='ST'?'<span class="ir" style="visibility:hidden">Ir</span>':'<span class="ir">Ir</span>'}</div>`;
+}
+document.getElementById('heroRows').innerHTML=STORES.map(s=>rowHTML(s)).join('');
+document.getElementById('popRows').innerHTML=STORES.map(s=>rowHTML(s,true)).join('');
+
+/* ---------- portadas pintadas ---------- */
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function lin(ctx,y0,y1,stops){const g=ctx.createLinearGradient(0,y0,0,y1);stops.forEach((s,i)=>g.addColorStop(i/(stops.length-1),s));return g}
+const SCENES={
+  marea(c,w,h,r){
+    c.fillStyle=lin(c,0,h*.64,['#1f2140','#5a2f55','#c4566a','#f2925d','#f8c983']);c.fillRect(0,0,w,h);
+    const sx=w*.66,sy=h*.6,sr=h*.15;const gl=c.createRadialGradient(sx,sy,0,sx,sy,sr*4);gl.addColorStop(0,'rgba(255,220,160,.7)');gl.addColorStop(1,'rgba(255,200,140,0)');c.fillStyle=gl;c.fillRect(0,0,w,h);
+    c.fillStyle='#ffe2b0';c.beginPath();c.arc(sx,sy,sr,0,7);c.fill();
+    c.fillStyle=lin(c,h*.62,h,['#5b3a52','#2a1d33','#120d1a']);c.fillRect(0,h*.62,w,h*.38);
+    for(let i=0;i<60;i++){const y=h*.63+r()*h*.35,len=8+r()*w*.08,x=sx-len/2+(r()-.5)*w*.25*((y-h*.6)/(h*.4)+.3);c.fillStyle=`rgba(255,215,160,${.15+r()*.4})`;c.fillRect(x,y,len,1+r()*1.5)}
+    c.fillStyle='#0c0911';c.beginPath();c.moveTo(0,h*.5);c.lineTo(w*.12,h*.48);c.lineTo(w*.22,h*.56);c.lineTo(w*.3,h*.7);c.lineTo(w*.34,h);c.lineTo(0,h);c.fill();
+    const lx=w*.13,lb=h*.49,lh=h*.3;c.beginPath();c.moveTo(lx-w*.018,lb);c.lineTo(lx-w*.01,lb-lh);c.lineTo(lx+w*.01,lb-lh);c.lineTo(lx+w*.018,lb);c.fill();
+    c.fillRect(lx-w*.016,lb-lh-h*.05,w*.032,h*.05);c.fillStyle='#ffe9b8';c.fillRect(lx-w*.009,lb-lh-h*.04,w*.018,h*.03);
+    c.fillStyle='rgba(255,233,184,.13)';c.beginPath();c.moveTo(lx,lb-lh-h*.025);c.lineTo(w*.75,h*.05);c.lineTo(w*.8,h*.28);c.fill();
+    for(let i=0;i<70;i++){c.fillStyle=`rgba(220,210,220,${r()*.35})`;c.fillRect(r()*w,r()*h*.7,1.4,1.4)}
+  },
+  neon(c,w,h,r){
+    c.fillStyle=lin(c,0,h,['#0a0820','#26124a','#4b1a52','#120a1c']);c.fillRect(0,0,w,h);
+    for(let L=0;L<2;L++){let x=-5;while(x<w){const bw=w*(.05+r()*.08),bh=h*(L?.35+r()*.4:.25+r()*.3);c.fillStyle=L?'#0d0a1a':'#1c1433';c.fillRect(x,h*.82-bh,bw,bh);
+      if(L)for(let wy=h*.82-bh+4;wy<h*.8;wy+=5)for(let wx=x+3;wx<x+bw-3;wx+=5)if(r()<.3){c.fillStyle=r()<.6?'rgba(255,200,110,.75)':'rgba(120,240,255,.7)';c.fillRect(wx,wy,2,2)}
+      x+=bw+1}}
+    c.save();c.shadowBlur=14;c.lineWidth=2.5;c.shadowColor=c.strokeStyle='#ff4fa3';c.strokeRect(w*.18,h*.3,w*.14,h*.09);c.shadowColor=c.strokeStyle='#3ff0ff';c.beginPath();c.moveTo(w*.6,h*.22);c.lineTo(w*.6,h*.5);c.stroke();c.beginPath();c.moveTo(w*.7,h*.35);c.lineTo(w*.84,h*.35);c.stroke();c.restore();
+    c.fillStyle=lin(c,h*.82,h,['#1a0f2a','#07050d']);c.fillRect(0,h*.82,w,h*.18);
+    for(let i=0;i<40;i++){c.fillStyle=r()<.5?'rgba(255,79,163,.35)':'rgba(63,240,255,.3)';c.fillRect(r()*w,h*.84+r()*h*.15,2+r()*16,1)}
+  },
+  bosque(c,w,h,r){
+    c.fillStyle=lin(c,0,h,['#d7e6dc','#9fc0b2','#5f8a7c']);c.fillRect(0,0,w,h);
+    c.fillStyle='rgba(255,250,230,.8)';c.beginPath();c.arc(w*.72,h*.28,h*.1,0,7);c.fill();
+    const cols=['#86a99c','#5f8577','#3d6155','#1f3a31'];
+    cols.forEach((col,L)=>{const base=h*(.45+L*.14);c.fillStyle=col;c.beginPath();c.moveTo(0,h);let x=0;c.lineTo(0,base);while(x<=w){const y=base-Math.sin(x*.01+L*2)*h*.05-r()*h*.02;c.lineTo(x,y);
+      if(r()<.5){const th=h*(.06+L*.03)*(.6+r()*.6);c.lineTo(x+3,y-th);c.lineTo(x+6,y)}x+=6}c.lineTo(w,h);c.fill();
+      c.fillStyle=`rgba(230,240,232,${.25-L*.05})`;c.fillRect(0,base-h*.02,w,h*.05)});
+  },
+  duna(c,w,h,r){
+    c.fillStyle=lin(c,0,h*.7,['#2a0f2e','#7a2236','#cc4a2e','#f29b4b']);c.fillRect(0,0,w,h);
+    c.fillStyle='rgba(255,230,200,.9)';c.beginPath();c.arc(w*.78,h*.2,h*.07,0,7);c.fill();c.fillStyle='rgba(255,200,180,.5)';c.beginPath();c.arc(w*.86,h*.3,h*.035,0,7);c.fill();
+    [['#a8382a',.55],['#8a2a22',.66],['#5e1c1c',.8]].forEach(([col,b],i)=>{c.fillStyle=col;c.beginPath();c.moveTo(0,h);c.lineTo(0,h*b);c.bezierCurveTo(w*.3,h*(b-.12),w*.5,h*(b+.08),w*(.7+i*.05),h*(b-.06));c.quadraticCurveTo(w*.9,h*(b-.1),w,h*(b+.02));c.lineTo(w,h);c.fill()});
+    c.fillStyle='#2b0d12';const ax=w*.24,ay=h*.6;c.fillRect(ax,ay-h*.22,w*.025,h*.22);c.fillRect(ax+w*.08,ay-h*.18,w*.025,h*.18);c.beginPath();c.arc(ax+w*.053,ay-h*.2,w*.053,Math.PI,0);c.lineTo(ax+w*.08,ay-h*.2);c.arc(ax+w*.053,ay-h*.2,w*.028,0,Math.PI,true);c.fill();
+  },
+  nieve(c,w,h,r){
+    c.fillStyle=lin(c,0,h,['#1b2a4d','#4b6fa0','#a8c6e6']);c.fillRect(0,0,w,h);
+    [[.5,'#e9f2fb','#b7cbe2'],[.68,'#d2e2f3','#9db6d4']].forEach(([b,a,d])=>{let x=-20;while(x<w){const pw=w*(.2+r()*.2),ph=h*(.25+r()*.2);c.fillStyle=d;c.beginPath();c.moveTo(x,h);c.lineTo(x+pw/2,h*b-ph*.5);c.lineTo(x+pw,h);c.fill();c.fillStyle=a;c.beginPath();c.moveTo(x+pw/2,h*b-ph*.5);c.lineTo(x+pw*.3,h*b);c.lineTo(x+pw/2,h*b-ph*.15);c.fill();x+=pw*.7}});
+    for(let i=0;i<90;i++){c.fillStyle=`rgba(255,255,255,${.3+r()*.6})`;c.fillRect(r()*w,r()*h,1.5,1.5)}
+  }
+};
+function finish(c,W,H,r){
+  const g=c.createRadialGradient(W/2,H/2,Math.min(W,H)*.25,W/2,H/2,Math.max(W,H)*.75);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.5)');c.fillStyle=g;c.fillRect(0,0,W,H);
+  const img=c.getImageData(0,0,W,H),d=img.data;for(let i=0;i<d.length;i+=4){const n=(r()-.5)*20;d[i]+=n;d[i+1]+=n;d[i+2]+=n}c.putImageData(img,0,0);
+}
+document.querySelectorAll('canvas.art').forEach(cv=>{
+  const w=+cv.dataset.w,h=+cv.dataset.h,k=2;cv.width=w*k;cv.height=h*k;cv.style.width=w+'px';cv.style.height=h+'px';cv.style.flex='none';
+  const c=cv.getContext('2d'),r=rng(+cv.dataset.seed||1);c.scale(k,k);(SCENES[cv.dataset.scene]||SCENES.marea)(c,w,h,r);c.setTransform(1,0,0,1,0,0);finish(c,w*k,h*k,r);
+});
+
+/* ---------- escalar maquetas ---------- */
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const s=f.firstElementChild,W=+s.dataset.w,H=+s.dataset.h;s.style.width=W+'px';s.style.height=H+'px';f.style.maxWidth=W+'px';const k=Math.min(1,f.clientWidth/W);s.style.transform=`scale(${k})`;f.style.height=H*k+'px'})}
+fit();addEventListener('resize',fit);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+
+/* ---------- Sí / No ---------- */
+const ideas=[...document.querySelectorAll('.idea')];
+let saved={};try{saved=JSON.parse(localStorage.getItem('wic-votos')||'{}')}catch(e){}
+function paint(){let si=0,no=0;ideas.forEach(a=>{const v=saved[a.dataset.id];a.dataset.v=v||'';a.querySelector('.si').setAttribute('aria-pressed',v==='si');a.querySelector('.no').setAttribute('aria-pressed',v==='no');if(v==='si')si++;if(v==='no')no++});
+  nSi.textContent=si;nNo.textContent=no;nNa.textContent=ideas.length-si-no}
+ideas.forEach(a=>a.querySelectorAll('.vote button').forEach(b=>b.addEventListener('click',()=>{const v=b.classList.contains('si')?'si':'no';saved[a.dataset.id]=saved[a.dataset.id]===v?undefined:v;try{localStorage.setItem('wic-votos',JSON.stringify(saved))}catch(e){}paint()})));
+paint();
+copyBtn.addEventListener('click',()=>{
+  const g=v=>ideas.filter(a=>saved[a.dataset.id]===v).map(a=>`${a.dataset.id} ${a.dataset.name}`);
+  const txt=`Where is cheap · mi elección\nSí: ${g('si').join(', ')||'ninguna'}\nNo: ${g('no').join(', ')||'ninguna'}\nSin marcar: ${ideas.filter(a=>!saved[a.dataset.id]).map(a=>a.dataset.id).join(', ')||'ninguna'}`;
+  const done=()=>{copied.textContent='Copiado. Pégamelo en el chat.';setTimeout(()=>copied.textContent='',3000)};
+  const fail=()=>{fallback.style.display='block';fallback.value=txt;fallback.select();copied.textContent='Cópialo de aquí:'};
+  try{navigator.clipboard.writeText(txt).then(done,fail)}catch(e){fail()}
+});
+</script>
+</body>
+</html>

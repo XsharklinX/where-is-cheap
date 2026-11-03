@@ -1,0 +1,129 @@
+import { savings } from './compare';
+import { FEES_CHECKED } from './fees';
+import { kindLabel, prettyRegion } from './region';
+import type { Compare, HistoryPoint, Offer, Settings, StoreId } from './types';
+import { STORES } from './types';
+
+export const TAG_SVG = (hole = '#1c1720', size = 22) =>
+  `<svg width="${size}" height="${size}" viewBox="0 0 34 34" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="${hole}"/></svg>`;
+
+export const esc = (s: string) =>
+  s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
+
+export const usd = (n: number) => `$${n.toFixed(2)}`;
+export const dop = (n: number, rate: number) => `RD$ ${Math.round(n * rate).toLocaleString('es-DO')}`;
+
+/** Logo oficial de cada tienda, empaquetado en la extensión (las páginas no dejan cargar imágenes de fuera). */
+export const logo = (id: StoreId | 'steam', name: string) =>
+  `<img class="sb" src="${browser.runtime.getURL(`/stores/${id}.png` as any)}" alt="" width="28" height="28" title="${esc(name)}">`;
+
+export function money(n: number, c: Pick<Compare, 'rates'>, s: Settings): string {
+  return s.currency === 'dop' ? dop(n, c.rates.DOP) : usd(n);
+}
+
+function priceSub(o: Offer, c: Compare, s: Settings, compact: boolean): string {
+  if (o.fit === 'no') return compact ? 'no sirve' : 'no sirve en tu cuenta';
+  const est = FEES_CHECKED ? '' : ' est.';
+  const parts: string[] = [];
+  if (o.couponUSD > 0) parts.push(`cupón ${o.coupon} −${o.couponUSD.toFixed(2)}`);
+  if (o.feeUSD > 0) parts.push(compact ? `+${o.feeUSD.toFixed(2)} comisión${est}` : `${(o.priceUSD - o.couponUSD).toFixed(2)} + ${o.feeUSD.toFixed(2)} comisión${est}`);
+  else parts.push('sin comisión');
+  if (s.currency === 'both') parts.push(dop(o.totalUSD, c.rates.DOP));
+  return parts.map(esc).join(compact ? '<br>' : ' · ');
+}
+
+export function rowHTML(o: Offer, c: Compare, s: Settings, isBest: boolean, compact = false): string {
+  const st = STORES[o.store];
+  const region = o.regionCheckedByStore ? (o.regions.some((r) => /global|worldwide|ww/i.test(r)) ? 'Global' : 'Tu país') : o.regions.map(prettyRegion).join(', ') || 'sin región';
+  const seller = st.marketplace ? ' · vende un tercero' : '';
+  const chip = `<span class="chip ${o.fit}">${esc(o.fitText)}</span>`;
+  const inner = `${logo(o.store, st.name)}
+    <span class="rn"><b>${st.name}</b><span>${kindLabel(o.kind)} · ${esc(region)}${compact ? '' : seller}</span>${compact ? chip : ''}</span>
+    ${compact ? '' : chip}
+    <span class="pr"><span class="pn">${money(o.totalUSD, c, s)}</span><span class="pf">${priceSub(o, c, s, compact)}</span></span>`;
+  const cls = `row ${o.fit}${isBest ? ' best' : ''}`;
+  if (o.fit === 'no') return `<div class="${cls}">${inner}<span class="ir ghost"></span></div>`;
+  const tip = o.suspicious ? 'Mucho más barato que el resto: suele ser una clave revendida que pueden revocar' : `Abrir en ${st.name}`;
+  return `<a class="${cls}" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" title="${esc(tip)}" data-store="${o.store}" data-total="${o.totalUSD}">${inner}<span class="ir">Ir</span></a>`;
+}
+
+export function rowsHTML(c: Compare, s: Settings, compact = false): string {
+  const bestIdx = c.offers.findIndex((o) => o.fit === 'ok');
+  const rows = c.offers.map((o, i) => rowHTML(o, c, s, i === bestIdx, compact));
+  if (c.game.steamUSD != null) {
+    const sub = c.game.steamDiscount ? `−${c.game.steamDiscount}% hoy` : s.currency === 'both' ? dop(c.game.steamUSD, c.rates.DOP) : 'precio de hoy';
+    rows.push(`<a class="row steam" href="https://store.steampowered.com/app/${c.game.appid}/" target="_blank" rel="noopener noreferrer">
+      ${logo('steam', 'Steam')}
+      <span class="rn"><b>Steam</b><span>Tienda oficial</span></span>${compact ? '' : '<span class="chip gh">Oficial</span>'}
+      <span class="pr"><span class="pn">${money(c.game.steamUSD, c, s)}</span><span class="pf">${sub}</span></span>
+      <span class="ir ghost"></span></a>`);
+  }
+  return rows.join('');
+}
+
+export function failedNote(c: Pick<Compare, 'failed'>): string {
+  if (!c.failed.length) return '';
+  const list = c.failed.map((id) => STORES[id].name);
+  const names = list.length > 1 ? `${list.slice(0, -1).join(', ')} y ${list[list.length - 1]}` : list[0];
+  return `${names} no ${c.failed.length > 1 ? 'respondieron' : 'respondió'}.`;
+}
+
+const STORE_LIST = 'Instant Gaming, Eneba, Driffle ni Kinguin';
+
+/** Línea principal y secundaria de la franja. */
+export function headline(c: Compare, s: Settings): { t1: string; t2: string } {
+  const top = c.offers.find((o) => o.fit === 'ok');
+  const save = savings(c);
+  if (c.owned) {
+    return { t1: 'Ya lo tienes en tu biblioteca', t2: top ? `Para regalar: desde ${money(top.totalUSD, c, s)} en ${STORES[top.store].name}` : 'No hace falta comprarlo otra vez.' };
+  }
+  if (top && save) {
+    const t2 = [`−${save.pct}% frente a Steam`, '<span class="ok">activa en RD</span>'];
+    if (s.currency === 'both') t2.push(`≈ ${dop(top.totalUSD, c.rates.DOP)}`);
+    return { t1: `Desde <span class="num">${money(top.totalUSD, c, s)}</span> en ${STORES[top.store].name}`, t2: t2.join(' · ') };
+  }
+  if (top && c.game.steamUSD == null) return { t1: `Desde <span class="num">${money(top.totalUSD, c, s)}</span> en ${STORES[top.store].name}`, t2: 'Steam no lo vende ahora en tu región · <span class="ok">activa en RD</span>' };
+  if (top) return { t1: 'Steam tiene el mejor precio ahora', t2: `Lo más barato fuera: ${money(top.totalUSD, c, s)} en ${STORES[top.store].name}` };
+  if (c.offers.length) return { t1: 'Ninguna oferta segura que active en RD', t2: `Hay ${c.offers.length} de otras regiones, cuentas o precios sospechosos. Míralas antes de comprar.` };
+  if (c.failed.length) return { t1: 'No encontramos ofertas', t2: failedNote(c) };
+  return { t1: s.marketplaces ? `No está en ${STORE_LIST}` : 'No está en Instant Gaming', t2: 'Buscamos el mismo juego y la misma edición.' };
+}
+
+/** Avisos extra: DLC sin juego base (Q). */
+export function notesHTML(c: Compare): string {
+  if (c.game.isDlc && c.ownsBase === true) return '<div class="note ok">Es un DLC de un juego que ya tienes.</div>';
+  if (c.game.isDlc && c.ownsBase === false) return '<div class="note warn">Es un DLC: necesitas el juego base, que no está en tu biblioteca.</div>';
+  return '';
+}
+
+/** D: veredicto y gráfica del historial. */
+export function verdictHTML(c: Compare): string {
+  const v = c.verdict;
+  const cls = v.kind === 'buy' ? 'ok' : v.kind === 'wait' ? 'tag' : 'gh';
+  return `<div class="verdict"><span class="chip ${cls}">${esc(v.title)}</span><span>${esc(v.detail)}</span></div>${sparkHTML(c.history)}`;
+}
+
+export function sparkHTML(h: HistoryPoint[], w = 300, ht = 44): string {
+  const pts = h.filter((p) => p.best != null || p.steam != null);
+  if (pts.length < 2) return '';
+  const vals = pts.flatMap((p) => [p.best, p.steam]).filter((v): v is number => v != null);
+  const lo = Math.min(...vals), hi = Math.max(...vals);
+  const t0 = pts[0].t, t1 = pts[pts.length - 1].t || t0 + 1;
+  const x = (t: number) => 4 + ((t - t0) / Math.max(1, t1 - t0)) * (w - 8);
+  const y = (v: number) => ht - 6 - ((v - lo) / Math.max(0.01, hi - lo)) * (ht - 14);
+  const line = (k: 'best' | 'steam') => pts.filter((p) => p[k] != null).map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)} ${y(p[k]!).toFixed(1)}`).join(' ');
+  const last = pts[pts.length - 1];
+  const days = Math.max(1, Math.round((t1 - t0) / 86_400_000));
+  return `<figure class="spark"><svg viewBox="0 0 ${w} ${ht}" width="100%" height="${ht}" role="img" aria-label="Historial de precio de ${days} días">
+    <path d="${line('steam')}" fill="none" stroke="#6c7f96" stroke-width="1.5"/>
+    <path d="${line('best')}" fill="none" stroke="#ffb547" stroke-width="2"/>
+    ${last.best != null ? `<circle cx="${x(last.t)}" cy="${y(last.best)}" r="3" fill="#ffb547"/>` : ''}
+  </svg><figcaption><span class="k steam"></span>Steam <span class="k best"></span>mejor precio en RD · ${days} ${days === 1 ? 'día' : 'días'} · mín. ${usd(lo)}</figcaption></figure>`;
+}
+
+export function footHTML(c: Compare, s: Settings): string {
+  const pay = s.pay === 'card' ? 'tarjeta' : 'PayPal';
+  const fails = failedNote(c);
+  const rate = c.rates.fallback ? ' · tasa sin actualizar' : '';
+  return `<span>Pago con ${pay}${FEES_CHECKED ? '' : ' · comisiones estimadas'}${rate}${fails ? ' · ' + esc(fails) : ''}</span>`;
+}
