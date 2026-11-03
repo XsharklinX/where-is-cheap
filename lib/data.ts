@@ -37,9 +37,15 @@ export interface LedgerEntry {
   net?: number; currency?: 'USD' | 'EUR'; pay?: Pay;
   /** true si el total lo escribió el usuario (y no es la estimación). */
   paidConfirmed?: boolean;
+  /** 1.4: si ya tenías el juego cuando pulsaste «Ir». false = no lo tenías (se puede auto-confirmar si luego aparece en tu biblioteca). */
+  ownedAtClick?: boolean;
 }
 export const getLedger = () => get<LedgerEntry[]>('ledger', []);
 export const setLedger = (l: LedgerEntry[]) => set('ledger', l);
+
+/** 1.4: compras que se dan por hechas solas: las que no tenías al pulsar «Ir» y ahora están en tu biblioteca. */
+export const autoBoughtIds = (ledger: LedgerEntry[], owned: number[]) =>
+  ledger.filter((e) => e.state === 'pending' && e.ownedAtClick === false && owned.includes(e.appid)).map((e) => e.id);
 
 /* Nombres de juegos ya consultados. */
 export const getNames = () => get<Record<number, string>>('names', {});

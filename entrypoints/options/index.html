@@ -28,10 +28,13 @@
     <section class="field">
       <span class="lbl" id="cur-l">Moneda</span>
       <div class="seg" role="radiogroup" aria-labelledby="cur-l" data-k="currency">
-        <button type="button" role="radio" data-v="both">USD + RD$</button>
+        <button type="button" role="radio" data-v="both">USD + local</button>
         <button type="button" role="radio" data-v="usd">Solo USD</button>
-        <button type="button" role="radio" data-v="dop">Solo RD$</button>
+        <button type="button" role="radio" data-v="dop">Solo local</button>
       </div>
+      <label for="localCurrency">Tu moneda local</label>
+      <select id="localCurrency" aria-label="Moneda local"></select>
+      <small>Los precios se muestran también en esta moneda, a la tasa del mercado (el recargo del banco solo se aplica al RD$).</small>
     </section>
     <section class="field">
       <span class="lbl" id="fx-l">Tu tarjeta</span>
@@ -115,6 +118,8 @@
         <label class="cexp">Caduca <input id="cExp" type="date" aria-label="Fecha de caducidad (opcional)"></label>
         <button type="submit" class="go">Añadir</button>
       </form>
+      <p class="txt">¿Sin cupón? Mira los que están vigentes ahora en cada tienda (se abre un agregador externo):</p>
+      <div id="couponLinks" class="clist"></div>
     </section>
 
     <h2>Comisiones</h2>

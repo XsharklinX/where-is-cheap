@@ -60,6 +60,8 @@ export interface Rates {
   DOPmarket?: number;
   /** Recargo aplicado a DOP, en %. */
   fxPct?: number;
+  /** 1.4: monedas locales por 1 USD para mostrarlas en la que elijas (ARS, VES, MXN…). Incluye DOP. */
+  fx?: Record<string, number>;
   at: number;
   fallback: boolean;
 }
@@ -138,6 +140,8 @@ export interface Settings {
   detectAnywhere: boolean;
   /** 5: recargo del banco sobre la tasa del mercado al pagar en dólares con una tarjeta en pesos (%). 0 = tarjeta en dólares. */
   fxPct: number;
+  /** 1.4: moneda local en que ver los precios (código ISO; por defecto DOP). */
+  localCurrency: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -152,6 +156,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mutedUntil: 0,
   detectAnywhere: false,
   fxPct: 0,
+  localCurrency: 'DOP',
 };
 
 export const STORES: Record<StoreId, { name: string; short: string; color: string; marketplace: boolean }> = {
@@ -162,6 +167,33 @@ export const STORES: Record<StoreId, { name: string; short: string; color: strin
 };
 
 export const STORE_IDS = Object.keys(STORES) as StoreId[];
+
+/** 1.4: dónde ver los cupones vigentes de cada tienda (agregador externo, se abre en una pestaña). */
+export const COUPON_URLS: Record<StoreId, string> = {
+  ig: 'https://gg.deals/vouchers/instant-gaming',
+  eneba: 'https://gg.deals/vouchers/eneba',
+  driffle: 'https://gg.deals/vouchers/driffle',
+  kinguin: 'https://gg.deals/vouchers/kinguin',
+};
+
+/** 1.4: monedas locales que se pueden elegir en Ajustes (código ISO, símbolo y nombre). */
+export const CURRENCIES: Record<string, { symbol: string; name: string }> = {
+  DOP: { symbol: 'RD$', name: 'Peso dominicano' },
+  ARS: { symbol: 'AR$', name: 'Peso argentino' },
+  VES: { symbol: 'Bs.', name: 'Bolívar venezolano' },
+  MXN: { symbol: 'MX$', name: 'Peso mexicano' },
+  COP: { symbol: 'COL$', name: 'Peso colombiano' },
+  CLP: { symbol: 'CL$', name: 'Peso chileno' },
+  PEN: { symbol: 'S/', name: 'Sol peruano' },
+  UYU: { symbol: '$U', name: 'Peso uruguayo' },
+  GTQ: { symbol: 'Q', name: 'Quetzal guatemalteco' },
+  HNL: { symbol: 'L', name: 'Lempira hondureño' },
+  NIO: { symbol: 'C$', name: 'Córdoba nicaragüense' },
+  CRC: { symbol: '₡', name: 'Colón costarricense' },
+  PYG: { symbol: '₲', name: 'Guaraní paraguayo' },
+  BOB: { symbol: 'Bs', name: 'Boliviano' },
+  PAB: { symbol: 'B/.', name: 'Balboa panameño' },
+};
 
 /** 10: otra edición del mismo juego, tal como la vende Steam en la ficha. */
 export interface Edition { name: string; label: string; steamUSD: number | null; steamInitialUSD: number | null }

@@ -4,7 +4,7 @@ import { savings } from './compare';
 import type { LedgerEntry, SteamStatus, SteamUser, WishItem } from './data';
 import { getSettings } from './settings';
 import type { Compare, SearchHit, Settings } from './types';
-import { STORES } from './types';
+import { CURRENCIES, STORES } from './types';
 import type { FreeGame } from './free';
 import './block.css';
 import { detectGpu, type RunCheck } from './pc';
@@ -32,7 +32,7 @@ export async function mountApp(app: HTMLElement, mode: 'popup' | 'panel') {
   }
 
   function shell(body: string) {
-    const chip = `<span class="chip gh">RD · ${s.currency === 'dop' ? 'RD$' : 'USD'} · ${s.pay === 'card' ? 'tarjeta' : 'PayPal'}</span>`;
+    const chip = `<span class="chip gh">RD · ${s.currency === 'dop' ? (CURRENCIES[s.localCurrency]?.symbol ?? 'RD$') : 'USD'} · ${s.pay === 'card' ? 'tarjeta' : 'PayPal'}</span>`;
     const tb = (id: Tab, label: string) => `<button role="tab" aria-selected="${tab === id}" data-tab="${id}">${label}</button>`;
     app.innerHTML = `<header>${TAG_SVG('#17141a', 22)}<b class="brand">Where is cheap</b>${chip}<button class="gear" data-a="options" title="Ajustes" aria-label="Ajustes">⚙</button></header>
       <nav class="tabs" role="tablist">${tb('prices', 'Precios')}${tb('wish', 'Lista de deseos')}${tb('saved', 'Ahorro')}${tb('free', 'Gratis')}</nav>

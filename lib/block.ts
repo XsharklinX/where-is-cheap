@@ -7,8 +7,8 @@ import { partLabel, type PartCheck, type PcPart, type RunCheck } from './pc';
 import { prettyRegion } from './region';
 import type { SellerNote } from './stores/kinguin';
 import type { Compare, Edition, Offer, Settings, StoreId } from './types';
-import { STORES } from './types';
-import { andList, dop, esc, failedNote, footHTML, logo, money, TAG_SVG, usd } from './ui';
+import { CURRENCIES, STORES } from './types';
+import { andList, esc, failedNote, footHTML, local, localNum, logo, money, TAG_SVG, usd } from './ui';
 
 export interface BlockState { open: boolean; showNo: boolean; chart: boolean; editions: Edition[]; edition?: string; run?: RunCheck | null; sellers?: Record<string, SellerNote | null> }
 
@@ -42,7 +42,11 @@ export function tipHTML(o: Offer, c: Compare, s: Settings): string {
   if (o.couponUSD > 0) lines.push(`<div><span>Cupón ${esc(o.coupon ?? '')}</span><span>− ${usd(o.couponUSD)}</span></div>`);
   lines.push(o.feeUSD > 0 ? `<div><span>Comisión de ${st}${est}</span><span>+ ${usd(o.feeUSD)}</span></div>` : '<div><span>Comisión</span><span>sin comisión</span></div>');
   lines.push(`<div class="t"><span>Pagas</span><span>${usd(o.totalUSD)}</span></div>`);
-  if (s.currency !== 'usd') lines.push(`<div><span>En pesos${c.rates.fxPct ? `, con el ${String(c.rates.fxPct).replace('.', ',')} % de tu banco` : ''}</span><span>${dop(o.totalUSD, c.rates.DOP)}</span></div>`);
+  if (s.currency !== 'usd') {
+    const curName = (CURRENCIES[s.localCurrency]?.name ?? s.localCurrency).toLowerCase();
+    const fx = s.localCurrency === 'DOP' && c.rates.fxPct ? `, con el ${String(c.rates.fxPct).replace('.', ',')} % de tu banco` : '';
+    lines.push(`<div><span>En ${esc(curName)}${fx}</span><span>${local(o.totalUSD, c, s)}</span></div>`);
+  }
   const note = o.feeUSD > 0 && est ? '<small>Comisión estimada hasta que confirmes una compra en esta tienda.</small>' : '';
   return `<span class="b-tip" role="tooltip">${lines.join('')}${note}</span>`;
 }
@@ -117,7 +121,7 @@ function mainHTML(c: Compare, s: Settings): string {
   if (!top) return SKELETON;
   const save = savings(c);
   const name = STORES[top.store].name;
-  const rd = s.currency === 'both' ? `<span class="b-rd">≈ ${dop(top.totalUSD, c.rates.DOP)}${c.rates.fxPct ? ' con tu tarjeta' : ''}</span>` : '';
+  const rd = s.currency === 'both' ? `<span class="b-rd">≈ ${local(top.totalUSD, c, s)}${c.rates.fxPct && s.localCurrency === 'DOP' ? ' con tu tarjeta' : ''}</span>` : '';
   const sub = [`en ${name}`, `${kindShort(top).toLowerCase()} de Steam ${regionShort(top) === 'Global' ? 'global' : esc(regionShort(top))}`, '<span class="ok">activa en RD</span>'];
   if (top.coupon) sub.push(`con tu cupón ${esc(top.coupon)}`);
   const lead = waiting.length ? 'Por ahora, ' : '';
@@ -179,7 +183,7 @@ export function tableHTML(c: Compare, s: Settings, st: BlockState): string {
       : sellerHTML(st.sellers?.[o.url]) || `<span>${STORES[o.store].marketplace ? 'vende un tercero' : 'tienda'}</span>`;
     return `<a class="b-row${o.i === bestI ? ' best' : ''}" data-k="${esc(`${o.store}|${o.url}`)}" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}" title="${esc(o.coupon ? `Abrir en ${nm} y copiar el cupón ${o.coupon}` : `Abrir en ${nm}`)}">
       ${logo(o.store, nm)}<span class="nm"><b>${nm}</b>${who}</span><span class="ty">${kindShort(o)} · ${esc(regionShort(o))}</span>
-      ${priced(o, c, s, 'tot')}${both ? `<span class="rd">${Math.round(o.totalUSD * c.rates.DOP).toLocaleString('es-DO')}</span>` : ''}<span class="ir">${ARROW}</span></a>`;
+      ${priced(o, c, s, 'tot')}${both ? `<span class="rd">${localNum(o.totalUSD, c, s)}</span>` : ''}<span class="ir">${ARROW}</span></a>`;
   };
   const sub = (g: StoreGroup) => !g.rest.length ? '' : `<div class="b-sub" data-k="sub|${g.store}"><span>+${g.rest.length} de ${STORES[g.store].name}</span>${g.rest.map((o) =>
     ` · <a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}">${kindShort(o)} ${esc(regionShort(o))} ${money(o.totalUSD, c, s)}</a>`).join('')}</div>`;

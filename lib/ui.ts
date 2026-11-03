@@ -1,7 +1,7 @@
 import { savings } from './compare';
 import { kindLabel, prettyRegion } from './region';
 import type { Compare, Edition, HistoryPoint, Offer, Settings, StoreId } from './types';
-import { STORES } from './types';
+import { CURRENCIES, STORES } from './types';
 
 export const TAG_SVG = (hole = '#1c1720', size = 22) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 34 34" aria-hidden="true"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="${hole}"/></svg>`;
@@ -11,6 +11,10 @@ export const esc = (s: string) =>
 
 export const usd = (n: number) => `$${n.toFixed(2)}`;
 export const dop = (n: number, rate: number) => `RD$ ${Math.round(n * rate).toLocaleString('es-DO')}`;
+// 1.4: la moneda local elegida en Ajustes (por defecto RD$).
+export const localRate = (c: Pick<Compare, 'rates'>, s: Settings) => c.rates.fx?.[s.localCurrency] ?? c.rates.DOP;
+export const localNum = (n: number, c: Pick<Compare, 'rates'>, s: Settings) => Math.round(n * localRate(c, s)).toLocaleString('es-DO');
+export const local = (n: number, c: Pick<Compare, 'rates'>, s: Settings) => `${CURRENCIES[s.localCurrency]?.symbol ?? s.localCurrency} ${localNum(n, c, s)}`;
 export const shortDate = (t: number) => new Date(t).toLocaleDateString('es-DO', { day: 'numeric', month: 'short' });
 
 /** Logo oficial de cada tienda, empaquetado en la extensión (las páginas no dejan cargar imágenes de fuera). */
@@ -18,7 +22,7 @@ export const logo = (id: StoreId | 'steam', name: string) =>
   `<img class="sb" src="${browser.runtime.getURL(`/stores/${id}.png` as any)}" alt="" width="28" height="28" title="${esc(name)}">`;
 
 export function money(n: number, c: Pick<Compare, 'rates'>, s: Settings): string {
-  return s.currency === 'dop' ? dop(n, c.rates.DOP) : usd(n);
+  return s.currency === 'dop' ? local(n, c, s) : usd(n);
 }
 
 /** «Eneba, Driffle y Kinguin». */
@@ -34,7 +38,7 @@ function priceSub(o: Offer, c: Compare, s: Settings, compact: boolean): string {
   if (o.couponUSD > 0) parts.push(`cupón ${o.coupon} −${o.couponUSD.toFixed(2)}`);
   if (o.feeUSD > 0) parts.push(compact ? `+${o.feeUSD.toFixed(2)} comisión${est}` : `${(o.priceUSD - o.couponUSD).toFixed(2)} + ${o.feeUSD.toFixed(2)} comisión${est}`);
   else parts.push('sin comisión');
-  if (s.currency === 'both') parts.push(dop(o.totalUSD, c.rates.DOP));
+  if (s.currency === 'both') parts.push(local(o.totalUSD, c, s));
   return parts.map(esc).join(compact ? '<br>' : ' · ');
 }
 
@@ -66,7 +70,7 @@ export function rowsHTML(c: Compare, s: Settings, compact = false): string {
   const pending = (c.pending ?? []).filter((id) => s.marketplaces || !STORES[id].marketplace);
   rows.push(...pending.map(waitRow));
   if (c.game.steamUSD != null) {
-    const sub = c.game.steamDiscount ? `−${c.game.steamDiscount}% hoy` : s.currency === 'both' ? dop(c.game.steamUSD, c.rates.DOP) : 'precio de hoy';
+    const sub = c.game.steamDiscount ? `−${c.game.steamDiscount}% hoy` : s.currency === 'both' ? local(c.game.steamUSD, c, s) : 'precio de hoy';
     rows.push(`<a class="row steam" data-k="steam" href="https://store.steampowered.com/app/${c.game.appid}/" target="_blank" rel="noopener noreferrer">
       ${logo('steam', 'Steam')}
       <span class="rn"><b>Steam</b><span>Tienda oficial</span></span>${compact ? '' : '<span class="chip gh">Oficial</span>'}
@@ -111,7 +115,7 @@ export function headline(c: Compare, s: Settings): { t1: string; t2: string } {
   }
   if (top && save) {
     const t2 = [`−${save.pct}% frente a Steam`, '<span class="ok">activa en RD</span>'];
-    if (s.currency === 'both') t2.push(`≈ ${dop(top.totalUSD, c.rates.DOP)}`);
+    if (s.currency === 'both') t2.push(`≈ ${local(top.totalUSD, c, s)}`);
     return { t1: `Desde <span class="num">${money(top.totalUSD, c, s)}</span> en ${STORES[top.store].name}`, t2: t2.join(' · ') + tail };
   }
   if (top && c.game.steamUSD == null) return { t1: `Desde <span class="num">${money(top.totalUSD, c, s)}</span> en ${STORES[top.store].name}`, t2: 'Steam no lo vende ahora en tu región · <span class="ok">activa en RD</span>' + tail };
@@ -177,7 +181,7 @@ export function footHTML(c: Compare, s: Settings): string {
   const est = shown.filter((id) => !c.feesChecked?.[id]);
   const fees = !est.length ? '' : est.length === shown.length ? ' · comisiones estimadas (se comprueban al confirmar una compra)' : ` · comisión estimada en ${andList(est.map((id) => STORES[id].name))} (se comprueba al confirmar una compra allí)`;
   // 5: RD$ con el recargo de tu banco.
-  const fx = c.rates.fxPct && s.currency !== 'usd' ? ` · RD$ con +${c.rates.fxPct}% de tu banco` : '';
+  const fx = c.rates.fxPct && s.currency !== 'usd' && s.localCurrency === 'DOP' ? ` · RD$ con +${c.rates.fxPct}% de tu banco` : '';
   return `<span>Pago con ${pay}${fees}${fx}${rate}${fails ? ' · ' + esc(fails) : ''}</span>`;
 }
 

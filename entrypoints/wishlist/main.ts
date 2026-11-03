@@ -7,7 +7,7 @@ import { monthYear, saleText, type SaleInfo } from '@/lib/history';
 import { getSettings } from '@/lib/settings';
 import type { HistLow, Rates, Settings } from '@/lib/types';
 import { STORES } from '@/lib/types';
-import { dop, esc, logo, TAG_SVG, toast, usd } from '@/lib/ui';
+import { esc, local, logo, TAG_SVG, toast, usd } from '@/lib/ui';
 
 type Item = WishItem & { before: number | null; low: HistLow | null; wait: boolean };
 type Data = { items: Item[]; user: SteamUser; rates: Rates; sale: SaleInfo; run: { done: number; total: number } | null; status?: SteamStatus | null };
@@ -60,7 +60,7 @@ function card(w: Item): string {
   else {
     const where = t.best != null && w.lastStore ? `${logo(w.lastStore, STORES[w.lastStore].name)}<span>en ${STORES[w.lastStore].name}</span>` : `${logo('steam', 'Steam')}<span>en Steam</span>`;
     price = `<div class="pl"><b class="num">${usd(t.price)}</b>${where}</div>
-      <div class="sub">${t.best != null && w.steamUSD != null ? `<s>Steam ${usd(w.steamUSD)}</s> · ` : ''}${s.currency !== 'usd' && data ? dop(t.price, data.rates.DOP) : ''}${is.drop(w) ? ` · <span class="okc">bajó de ${usd(w.before!)}</span>` : ''}</div>`;
+      <div class="sub">${t.best != null && w.steamUSD != null ? `<s>Steam ${usd(w.steamUSD)}</s> · ` : ''}${s.currency !== 'usd' && data ? local(t.price, data, s) : ''}${is.drop(w) ? ` · <span class="okc">bajó de ${usd(w.before!)}</span>` : ''}</div>`;
   }
   const low = w.low?.usd != null ? `<div class="low${w.wait ? ' wait' : ''}">Mínimo histórico: −${w.low.pct}% en ${monthYear(w.low.date)}, unos ${usd(w.low.usd)} aquí</div>` : '';
   const go = w.lastUrl && t.best != null ? w.lastUrl : `https://store.steampowered.com/app/${w.appid}/`;

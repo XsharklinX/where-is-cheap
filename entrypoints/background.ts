@@ -1,5 +1,5 @@
 import { gather, planCart, rank, savings, type CartItem } from '@/lib/compare';
-import { getCoupons, getHistory, getLearned, getLedger, getNames, getSteamStatus, getUser, getWish, setHistory, setLearned, setLedger, setNames, setSteamStatus, setUser, setWish, type LedgerEntry, type SteamStatus, type SteamUser, type WishItem } from '@/lib/data';
+import { autoBoughtIds, getCoupons, getHistory, getLearned, getLedger, getNames, getSteamStatus, getUser, getWish, setHistory, setLearned, setLedger, setNames, setSteamStatus, setUser, setWish, type LedgerEntry, type SteamStatus, type SteamUser, type WishItem } from '@/lib/data';
 import { mergeFees, plausible, round2 } from '@/lib/fees';
 import { addPoint, nextSale, verdict } from '@/lib/history';
 import { getLow, toLow, waitWorth } from '@/lib/low';
@@ -267,6 +267,9 @@ async function syncUser(u: SteamUser) {
   for (const [id, w] of Object.entries(wish)) if (w.target != null && !next[+id]) next[+id] = w;
   await setWish(next);
   await fillNames(Object.keys(next).map(Number));
+  // 1.4: compras que se cuentan solas. Si pulsaste «Ir» en un juego que no tenías y ahora está en tu biblioteca,
+  // se marca comprado sin preguntar (el precio queda estimado; la comisión se aprende al confirmar con el total).
+  for (const id of autoBoughtIds(await getLedger(), u.owned)) await confirmPurchase(id, 'bought');
 }
 
 /** Los nombres que falten se piden a Steam de una vez, para que ningún juego salga como «App 123». */
@@ -327,7 +330,8 @@ async function runCheck(limit: number) {
   await browser.storage.session.set({ wishCheck: { done: 0, total: items.length } });
   let done = 0;
   const found: Found[] = [];
-  for (const w of items) {
+  // 1.4: se revisa de 4 en 4 en vez de uno a uno, para llenar las píldoras mucho más rápido.
+  await mapLimit(items, 4, async (w) => {
     try {
       const c = await compareApp(w.appid, true);
       const top = c.offers.find((o) => o.fit === 'ok');
@@ -364,7 +368,7 @@ async function runCheck(limit: number) {
     }).catch(() => {});
     await wishWrite;
     await browser.storage.session.set({ wishCheck: { done: ++done, total: items.length } });
-  }
+  });
   await browser.storage.session.remove('wishCheck');
   await notifyFound(found, s);
 }
@@ -900,7 +904,7 @@ export default defineBackground(() => {
     })();
   });
   browser.alarms.onAlarm.addListener((a) => {
-    if (a.name === 'wishlist') void syncSteam(false).catch(() => {}).then(() => checkWishlist());
+    if (a.name === 'wishlist') void syncSteam(false).catch(() => {}).then(() => checkWishlist(24));
     if (a.name === 'sale') void checkSale();
     if (a.name === 'refund') void checkRefunds();
     if (a.name === 'free') void checkFree();

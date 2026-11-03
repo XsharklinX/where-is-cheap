@@ -8,7 +8,7 @@ import { cpuScore, detectGpu, gpuScore, softwareGpu, type PcAuto, type PcManual 
 import { fxFromCharge, getRates } from '@/lib/rates';
 import { getSettings, saveSettings } from '@/lib/settings';
 import type { Pay, Settings, StoreId } from '@/lib/types';
-import { STORE_IDS, STORES } from '@/lib/types';
+import { COUPON_URLS, CURRENCIES, STORE_IDS, STORES } from '@/lib/types';
 import { andList, esc, logo, shortDate, TAG_SVG } from '@/lib/ui';
 
 document.getElementById('brand')!.innerHTML = `${TAG_SVG('#121014', 30)}<h1>Where is cheap</h1>`;
@@ -168,6 +168,12 @@ async function init() {
       if (k === 'pay') void renderFees();
     });
   });
+  // 1.4: la moneda local en que se muestran los precios (además o en vez del dólar).
+  const cur = $<HTMLSelectElement>('localCurrency');
+  cur.innerHTML = Object.entries(CURRENCIES).map(([code, c]) => `<option value="${code}">${esc(c.name)} · ${code}</option>`).join('');
+  cur.value = s.localCurrency;
+  cur.addEventListener('change', async () => { await saveSettings({ localCurrency: cur.value }); flash(); });
+
   for (const id of ['marketplaces', 'accounts', 'dropAlerts'] as const) {
     const el = $<HTMLInputElement>(id);
     el.checked = s[id];
@@ -223,6 +229,8 @@ async function init() {
     flash('Cupón añadido');
   });
   void renderCoupons();
+  // 1.4: enlaces a los cupones vigentes de cada tienda (agregador externo).
+  $('couponLinks').innerHTML = STORE_IDS.map((id) => `<a class="crow" href="${COUPON_URLS[id]}" target="_blank" rel="noopener noreferrer">${logo(id, STORES[id].name)}<b>${STORES[id].name}</b><span class="mute">Ver cupones ↗</span></a>`).join('');
   void renderFees();
   void initPc();
   $('pcRedo').addEventListener('click', () => void initPc(true).then(() => flash('Leído otra vez')));

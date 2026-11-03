@@ -87,7 +87,7 @@ export default defineContentScript({
     let budget = onWishlist || onSearch ? Infinity : 40;
     const stillShown = (appid: number) => !!document.querySelector(`[data-wic-want="${appid}"]`);
     const pump = () => {
-      while (running < 2 && queue.length) {
+      while (running < 4 && queue.length) {
         const appid = queue.shift()!;
         // Si al llegar su turno ya no se ve (hiciste scroll), se suelta y se vuelve a pedir cuando reaparezca.
         if (!stillShown(appid)) { asked.delete(appid); continue; }
