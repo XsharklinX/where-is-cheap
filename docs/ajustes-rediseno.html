@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ajustes · Where is cheap — rediseño propuesto</title>
+<style>
+  :root{
+    --bg:#121014; --panel:#17141a; --panel2:#1c171f; --line:#38323e; --line2:#302a35;
+    --ink:#f3eee8; --mute:#8d858f; --tag:#ffb547; --tagink:#17141a; --save:#45d69b; --bad:#e5534b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#0c0a0e;color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .intro{max-width:1180px;margin:0 auto;padding:36px 24px 8px}
+  .intro h1{margin:0;font-size:22px;letter-spacing:-.02em}
+  .intro p{margin:4px 0 0;color:var(--mute);font-size:13.5px}
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:1180px;margin:0 auto;padding:16px 24px 60px}
+  @media(max-width:900px){.compare{grid-template-columns:1fr}}
+  .col h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);margin:0 0 10px;font-weight:600}
+  .screen{background:var(--bg);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-height:640px}
+  /* ===== tipografía y piezas comunes ===== */
+  .taglogo{width:16px;height:16px;flex:none}
+  .h{display:flex;align-items:center;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line2)}
+  .h .brand{font-weight:700;font-size:15px}
+  .h .ver{margin-left:auto;font-size:11.5px;color:var(--mute);font-weight:600}
+  .field{background:var(--panel);border:1px solid var(--line2);border-radius:11px;padding:13px 15px;margin:0 14px 10px;display:grid;gap:7px}
+  .lbl{font-size:12px;color:var(--mute);font-weight:600}
+  .small{font-size:11.5px;color:var(--mute)}
+  select,input[type=number]{background:#141117;color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;width:100%}
+  .seg{display:flex;gap:3px;background:#141117;border:1px solid var(--line);border-radius:8px;padding:3px}
+  .seg b{flex:1;border:0;background:none;color:var(--mute);border-radius:6px;padding:6px;font-size:12.5px;font-weight:500;text-align:center}
+  .seg b.on{background:var(--tag);color:var(--tagink);font-weight:700}
+  .sw{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line2);border-radius:11px;padding:12px 15px;margin:0 14px 10px}
+  .sw .txt{flex:1;min-width:0}
+  .sw .t{font-size:13.5px;font-weight:600}
+  .sw .s{font-size:11.5px;color:var(--mute)}
+  .tgl{margin-left:auto;flex:none;width:36px;height:21px;border-radius:99px;background:#3a3440;position:relative}
+  .tgl::after{content:"";position:absolute;left:3px;top:3px;width:15px;height:15px;border-radius:50%;background:#bbb}
+  .tgl.on{background:var(--tag)}
+  .tgl.on::after{left:18px;background:var(--tagink)}
+  .sec{margin:16px 14px 6px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--tag);font-weight:600}
+  .lead{padding:12px 18px 4px;color:var(--mute);font-size:12.5px}
+  .chip{display:inline-flex;align-items:center;gap:5px;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:600}
+  .chip.ok{background:rgba(69,214,155,.14);color:var(--save)}
+  .chip.warn{background:rgba(255,181,71,.14);color:var(--tag)}
+  .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+  /* ===== ANTES: columna plana ===== */
+  .antes .lead{display:block}
+  .antes .sec{margin:20px 16px 8px}
+  .pcgrid{display:grid;grid-template-columns:76px 1fr auto;gap:7px 9px;align-items:center;padding:12px 15px;margin:0 14px 10px;background:var(--panel);border:1px solid var(--line2);border-radius:11px}
+  .pcgrid .lbl{font-size:12.5px;color:var(--ink)}
+  /* ===== DESPUÉS: sidebar + tarjetas ===== */
+  .despues{display:grid;grid-template-columns:196px 1fr;min-height:680px}
+  .sidebar{background:var(--panel);border-right:1px solid var(--line2);padding:12px 10px}
+  .side-item{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;color:var(--mute);font-size:13px;margin-bottom:2px}
+  .side-item .ic{width:18px;text-align:center;opacity:.8}
+  .side-item.on{background:#241e29;color:var(--ink);font-weight:600}
+  .side-item.on .ic{opacity:1}
+  .main{padding:4px 0 0;overflow:hidden}
+  .main .ptitle{font-size:18px;font-weight:700;letter-spacing:-.02em;padding:16px 18px 2px}
+  .main .psub{font-size:12.5px;color:var(--mute);padding:0 18px 12px}
+  .card{background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:15px 16px;margin:0 16px 12px}
+  .card .ch{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:600;margin-bottom:4px}
+  .card .ch .ic{width:18px;text-align:center}
+  .card .cd{font-size:12px;color:var(--mute);margin:0 0 11px}
+  .card .row2{display:flex;gap:10px}
+  .card .row2 > *{flex:1}
+  .pc-card{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:0 16px 12px}
+  .pcc{background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:13px 14px}
+  .pcc .ic{width:20px;height:20px;margin-bottom:8px;color:var(--tag)}
+  .pcc b{font-size:13.5px;display:block}
+  .pcc .v{font-size:12px;color:var(--mute);margin:2px 0 8px;min-height:15px}
+  .pcc input{width:100%}
+</style>
+</head>
+<body>
+  <div class="intro">
+    <h1>Ajustes de Where is cheap</h1>
+    <p>Izquierda: cómo se ve hoy. Derecha: la propuesta de rediseño (misma información, otra estructura).</p>
+  </div>
+
+  <div class="compare">
+    <!-- ======================= ANTES ======================= -->
+    <div class="col">
+      <h2>Hoy</h2>
+      <div class="screen antes">
+        <div class="h">
+          <svg class="taglogo" viewBox="0 0 34 34"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#17141a"/></svg>
+          <span class="brand">Where is cheap</span><span class="ver">v1.5.0</span>
+        </div>
+        <div class="lead">Lo justo para que el precio que ves sea el que pagas. Todo se guarda en este navegador.</div>
+
+        <div class="sec">Tu compra</div>
+        <div class="field"><label class="lbl">Región de tu cuenta de Steam</label><select><option>República Dominicana · LATAM-USD</option></select><div class="small">De momento solo RD.</div></div>
+        <div class="field"><label class="lbl">Con qué pagas normalmente</label><div class="seg"><b class="on">Tarjeta</b><b>PayPal</b></div></div>
+        <div class="field"><label class="lbl">Moneda</label><div class="seg"><b class="on">USD + local</b><b>Solo USD</b><b>Solo local</b></div></div>
+        <div class="field"><label class="lbl">Tu tarjeta</label><div class="seg"><b class="on">En dólares</b><b>En pesos</b></div><div class="small">Un cargo de $____ me salió en RD$____</div></div>
+        <div class="sw"><div class="txt"><div class="t">Incluir marketplaces</div><div class="s">Eneba, Driffle y Kinguin.</div></div><div class="tgl on"></div></div>
+        <div class="sw"><div class="txt"><div class="t">Mostrar cuentas de Steam</div><div class="s">No son claves.</div></div><div class="tgl"></div></div>
+
+        <div class="sec">Tu PC</div>
+        <div class="field"><div class="small">Con esto te decimos en la ficha si tu PC lo corre.</div></div>
+        <div class="pcgrid"><label class="lbl">Gráfica</label><input placeholder="Escribe o elige tu gráfica"><span class="chip warn"><span class="dot"></span>No la reconocemos</span></div>
+        <div class="pcgrid"><label class="lbl">Procesador</label><input placeholder="Por ejemplo: AMD Ryzen 5 5600X"><span class="chip ok"><span class="dot"></span>Reconocido</span></div>
+        <div class="pcgrid"><label class="lbl">Memoria</label><input placeholder="16">GB<span class="chip ok"><span class="dot"></span>Leída</span></div>
+
+        <div class="sec">Avisos de la lista</div>
+        <div class="sw"><div class="txt"><div class="t">Avisarme de bajadas fuertes</div><div class="s">Cuando un juego baja de verdad.</div></div><div class="tgl on"></div></div>
+
+        <div class="sec">Fuera de Steam</div>
+        <div class="sw"><div class="txt"><div class="t">Detectar juegos en otras páginas</div><div class="s">YouTube, Twitch, Reddit…</div></div><div class="tgl"></div></div>
+
+        <div class="sec">Tus cupones</div>
+        <div class="field"><div class="small">Cupones que te han funcionado. Se restan del precio.</div><select><option>Eneba</option></select><input placeholder="Código"><input placeholder="%"></div>
+
+        <div class="sec">Comisiones</div>
+        <div class="field"><div class="small">Lo que suma cada tienda al pagar.</div><div class="small">Instant Gaming · 0% · <b style="color:var(--tag)">estimada</b></div></div>
+      </div>
+    </div>
+
+    <!-- ======================= DESPUÉS ======================= -->
+    <div class="col">
+      <h2>Propuesta</h2>
+      <div class="screen despues">
+        <div class="sidebar">
+          <div class="side-item on"><span class="ic">💳</span> Compra</div>
+          <div class="side-item"><span class="ic">🖥️</span> Tu PC</div>
+          <div class="side-item"><span class="ic">🔔</span> Avisos</div>
+          <div class="side-item"><span class="ic">🌐</span> Fuera de Steam</div>
+          <div class="side-item"><span class="ic">🎟️</span> Cupones</div>
+          <div class="side-item"><span class="ic">💰</span> Comisiones</div>
+        </div>
+        <div class="main">
+          <div class="ptitle">Compra</div>
+          <div class="psub">Región, moneda y forma de pago para que el precio sea el que pagas.</div>
+
+          <div class="card">
+            <div class="ch"><span class="ic">🌎</span> Región y moneda</div>
+            <p class="cd">La región decide qué claves activan en tu cuenta.</p>
+            <div class="row2">
+              <div><label class="lbl">Región de Steam</label><select><option>República Dominicana · LATAM-USD</option></select></div>
+              <div><label class="lbl">Moneda local</label><select><option>RD$ · Peso dominicano</option></select></div>
+            </div>
+            <div style="margin-top:10px"><label class="lbl">Cómo la ves</label><div class="seg"><b class="on">USD + local</b><b>Solo USD</b><b>Solo local</b></div></div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="ic">💳</span> Pago y comisiones</div>
+            <p class="cd">Con tarjeta o PayPal cambia lo que suma cada tienda.</p>
+            <div class="seg" style="margin-bottom:10px"><b class="on">Tarjeta</b><b>PayPal</b></div>
+            <div class="sw" style="margin:0;background:none;border:0;padding:0"><div class="txt"><div class="t">Incluir marketplaces</div><div class="s">Eneba, Driffle y Kinguin</div></div><div class="tgl on"></div></div>
+            <div class="sw" style="margin:0;background:none;border:0;padding:0"><div class="txt"><div class="t">Mostrar cuentas de Steam</div><div class="s">No son claves</div></div><div class="tgl"></div></div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="ic">🏦</span> Tu tarjeta</div>
+            <p class="cd">Si pagas en pesos, el banco cobra la tasa más su recargo.</p>
+            <div class="sw" style="margin:0;background:none;border:0;padding:0"><div class="txt"><div class="t">Tarjeta en pesos</div><div class="s">Añade el recargo del banco a los RD$</div></div><div class="tgl"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

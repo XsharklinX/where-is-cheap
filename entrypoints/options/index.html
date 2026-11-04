@@ -8,126 +8,147 @@
 </head>
 <body>
   <main class="wic opt">
-    <header id="brand"></header>
-    <p class="lead">Lo justo para que el precio que ves sea el que pagas. Todo se guarda en este navegador y no sale de él.</p>
+    <aside class="side">
+      <header id="brand" class="side-brand"></header>
+      <p class="side-lead">Lo justo para que el precio que ves sea el que pagas. Todo se queda en este navegador.</p>
+      <nav class="side-nav">
+        <a href="#compra" data-sec="compra"><span class="ic">💳</span> Compra</a>
+        <a href="#pc" data-sec="pc"><span class="ic">🖥️</span> Tu PC</a>
+        <a href="#avisos" data-sec="avisos"><span class="ic">🔔</span> Avisos</a>
+        <a href="#fuera" data-sec="fuera"><span class="ic">🌐</span> Fuera de Steam</a>
+        <a href="#cupones" data-sec="cupones"><span class="ic">🎟️</span> Cupones</a>
+        <a href="#comisiones" data-sec="comisiones"><span class="ic">💰</span> Comisiones</a>
+      </nav>
+      <p id="saved" class="saved" aria-live="polite"></p>
+    </aside>
 
-    <h2>Tu compra</h2>
-    <section class="field">
-      <label for="country">Región de tu cuenta de Steam</label>
-      <select id="country"><option value="DO">República Dominicana · LATAM-USD</option></select>
-      <small>De momento solo RD. Decide qué claves activan con tu cuenta.</small>
-    </section>
-    <section class="field">
-      <span class="lbl" id="pay-l">Con qué pagas normalmente</span>
-      <div class="seg" role="radiogroup" aria-labelledby="pay-l" data-k="pay">
-        <button type="button" role="radio" data-v="card">Tarjeta</button>
-        <button type="button" role="radio" data-v="paypal">PayPal</button>
-      </div>
-      <small>Cambia la comisión que suma cada tienda.</small>
-    </section>
-    <section class="field">
-      <span class="lbl" id="cur-l">Moneda</span>
-      <div class="seg" role="radiogroup" aria-labelledby="cur-l" data-k="currency">
-        <button type="button" role="radio" data-v="both">USD + local</button>
-        <button type="button" role="radio" data-v="usd">Solo USD</button>
-        <button type="button" role="radio" data-v="dop">Solo local</button>
-      </div>
-      <label for="localCurrency">Tu moneda local</label>
-      <select id="localCurrency" aria-label="Moneda local"></select>
-      <small>Los precios se muestran también en esta moneda, a la tasa del mercado (el recargo del banco solo se aplica al RD$).</small>
-    </section>
-    <section class="field">
-      <span class="lbl" id="fx-l">Tu tarjeta</span>
-      <div class="seg" role="radiogroup" aria-labelledby="fx-l" id="fxMode">
-        <button type="button" role="radio" data-v="usd">En dólares</button>
-        <button type="button" role="radio" data-v="dop">En pesos</button>
-      </div>
-      <div id="fxBox" class="fxbox" hidden>
-        <p class="txt">Con una tarjeta en pesos, el banco cobra los dólares a su tasa, que es más cara que la del mercado. Busca en tu estado de cuenta un cargo en dólares y escribe lo que te cobraron en pesos.</p>
-        <form id="fxForm" class="cform fxrow">
-          <span>Un cargo de $</span><input id="fxUsd" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="19.99" aria-label="Importe en dólares">
-          <span>me salió en RD$</span><input id="fxDop" type="number" min="1" step="0.01" inputmode="decimal" placeholder="1,250" aria-label="Importe en pesos">
-          <button type="submit" class="go">Calcular</button>
-        </form>
-        <div class="cform fxrow"><label for="fxPct">O pon el recargo directamente</label><input id="fxPct" type="number" min="0" max="20" step="0.1" inputmode="decimal"><span>%</span></div>
-      </div>
-      <small id="fxNow"></small>
-    </section>
-    <section class="sw">
-      <span><label for="marketplaces">Incluir marketplaces</label><small>Eneba, Driffle y Kinguin: suelen ser más baratos; venden terceros.</small></span>
-      <input type="checkbox" id="marketplaces" role="switch">
-    </section>
-    <section class="sw">
-      <span><label for="accounts">Mostrar cuentas de Steam</label><small>No son claves: te dan una cuenta con el juego. Nunca salen como mejor precio.</small></span>
-      <input type="checkbox" id="accounts" role="switch">
-    </section>
+    <div class="content">
+      <!-- ============ Compra ============ -->
+      <section id="compra" class="sec-block">
+        <h1>Compra</h1>
+        <p class="sec-sub">Región, moneda y forma de pago para que el precio sea el que pagas.</p>
 
-    <h2 id="pc">Tu PC</h2>
-    <section class="field">
-      <p class="txt">Con esto te decimos en la ficha de cada juego si tu PC lo corre. Lo lee el navegador y no sale de aquí. Si algo no es tu PC (un portátil con dos gráficas, por ejemplo), escribe el modelo encima.</p>
-      <div id="pcRows" class="pcgrid"></div>
-      <div class="pcact"><button type="button" id="pcRedo">Volver a leer</button><button type="button" id="pcReset" hidden>Quitar mis cambios</button></div>
-    </section>
+        <div class="card">
+          <div class="card-head"><span class="ic">🌎</span> Región y moneda</div>
+          <p class="card-desc">La región decide qué claves activan en tu cuenta de Steam.</p>
+          <div class="grid2">
+            <div class="f"><label for="country">Región de Steam</label><select id="country"><option value="DO">República Dominicana · LATAM-USD</option></select><small>De momento solo RD.</small></div>
+            <div class="f"><label for="localCurrency">Moneda local</label><select id="localCurrency" aria-label="Moneda local"></select><small>A la tasa del mercado; el recargo del banco solo aplica al RD$.</small></div>
+          </div>
+          <span class="lbl" id="cur-l">Cómo la ves</span>
+          <div class="seg" role="radiogroup" aria-labelledby="cur-l" data-k="currency">
+            <button type="button" role="radio" data-v="both">USD + local</button>
+            <button type="button" role="radio" data-v="usd">Solo USD</button>
+            <button type="button" role="radio" data-v="dop">Solo local</button>
+          </div>
+        </div>
 
-    <h2>Avisos de la lista de deseos</h2>
-    <section class="sw">
-      <span><label for="dropAlerts">Avisarme de bajadas fuertes</label><small>Cuando un juego de tu lista baja de precio desde la última revisión, no por estar ya rebajado. Además de los límites que pongas a cada juego. Se revisa cada 6 horas.</small></span>
-      <input type="checkbox" id="dropAlerts" role="switch">
-    </section>
-    <section class="field">
-      <span class="lbl" id="pct-l">Cuánto tiene que bajar frente a Steam</span>
-      <div class="seg" role="radiogroup" aria-labelledby="pct-l" data-k="dropPct">
-        <button type="button" role="radio" data-v="40">−40%</button>
-        <button type="button" role="radio" data-v="50">−50%</button>
-        <button type="button" role="radio" data-v="60">−60%</button>
-        <button type="button" role="radio" data-v="75">−75%</button>
-      </div>
-    </section>
-    <section class="field">
-      <span class="lbl" id="every-l">Como mucho un aviso de bajadas cada</span>
-      <div class="seg" role="radiogroup" aria-labelledby="every-l" data-k="alertEvery">
-        <button type="button" role="radio" data-v="6">6 horas</button>
-        <button type="button" role="radio" data-v="24">Día</button>
-        <button type="button" role="radio" data-v="168">Semana</button>
-      </div>
-      <small class="hint">Los juegos que bajan se juntan en un solo aviso. Los límites que pongas a un juego avisan al momento.</small>
-    </section>
-    <section class="sw">
-      <span><label for="muted">Silenciar todos los avisos un día</label><small id="mutedTxt">También los límites y el aviso de rebajas. Lo que baje mientras tanto no se avisa después.</small></span>
-      <input type="checkbox" id="muted" role="switch">
-    </section>
+        <div class="card">
+          <div class="card-head"><span class="ic">💳</span> Pago y comisiones</div>
+          <p class="card-desc">Con tarjeta o PayPal cambia lo que suma cada tienda.</p>
+          <span class="lbl" id="pay-l">Con qué pagas normalmente</span>
+          <div class="seg" role="radiogroup" aria-labelledby="pay-l" data-k="pay">
+            <button type="button" role="radio" data-v="card">Tarjeta</button>
+            <button type="button" role="radio" data-v="paypal">PayPal</button>
+          </div>
+          <div class="sw"><span><label for="marketplaces">Incluir marketplaces</label><small>Eneba, Driffle y Kinguin: suelen ser más baratos; venden terceros.</small></span><input type="checkbox" id="marketplaces" role="switch"></div>
+          <div class="sw"><span><label for="accounts">Mostrar cuentas de Steam</label><small>No son claves: te dan una cuenta con el juego. Nunca salen como mejor precio.</small></span><input type="checkbox" id="accounts" role="switch"></div>
+        </div>
 
-    <h2>Fuera de Steam</h2>
-    <section class="sw">
-      <span><label for="detectAnywhere">Detectar juegos en otras páginas</label><small>YouTube, Twitch, Reddit, Metacritic, IGN… Aparece una etiqueta abajo a la derecha con el mejor precio. Chrome te pedirá permiso para leer las páginas que visitas. Solo actúa en webs de videojuegos, fichas de juegos de Wikipedia y páginas que marcan un videojuego (como la tarjeta de juego de YouTube o la categoría de Twitch); en ellas envía a Steam el nombre del posible juego. Nunca el título de otras páginas.</small></span>
-      <input type="checkbox" id="detectAnywhere" role="switch">
-    </section>
-    <section class="field">
-      <span class="lbl">Panel lateral</span>
-      <p class="txt"><kbd>Alt</kbd> + <kbd>W</kbd> abre la comparación en un panel a la derecha, que sigue a la pestaña que estés mirando. Puedes cambiar el atajo en <span class="mono">chrome://extensions/shortcuts</span>.</p>
-    </section>
+        <div class="card">
+          <div class="card-head"><span class="ic">🏦</span> Tu tarjeta</div>
+          <p class="card-desc">Si pagas en pesos, el banco cobra la tasa del mercado más su recargo.</p>
+          <div class="seg" role="radiogroup" id="fxMode">
+            <button type="button" role="radio" data-v="usd">En dólares</button>
+            <button type="button" role="radio" data-v="dop">En pesos</button>
+          </div>
+          <div id="fxBox" class="fxbox" hidden>
+            <p class="txt">Con una tarjeta en pesos, el banco cobra los dólares a su tasa, que es más cara que la del mercado. Busca en tu estado de cuenta un cargo en dólares y escribe lo que te cobraron en pesos.</p>
+            <form id="fxForm" class="cform fxrow">
+              <span>Un cargo de $</span><input id="fxUsd" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="19.99" aria-label="Importe en dólares">
+              <span>me salió en RD$</span><input id="fxDop" type="number" min="1" step="0.01" inputmode="decimal" placeholder="1,250" aria-label="Importe en pesos">
+              <button type="submit" class="go">Calcular</button>
+            </form>
+            <div class="cform fxrow"><label for="fxPct">O pon el recargo directamente</label><input id="fxPct" type="number" min="0" max="20" step="0.1" inputmode="decimal"><span>%</span></div>
+          </div>
+          <small id="fxNow"></small>
+        </div>
+      </section>
 
-    <h2>Tus cupones</h2>
-    <section class="field">
-      <p class="txt">Cupones que te han funcionado. Se restan del precio de esa tienda en todas las comparaciones y, al pulsar «Ir», el código se copia solo para pegarlo al pagar. Si pones la fecha de caducidad, dejan de restarse ese día.</p>
-      <div id="coupons" class="clist"></div>
-      <form id="addCoupon" class="cform">
-        <select id="cStore" aria-label="Tienda"><option value="ig">Instant Gaming</option><option value="eneba">Eneba</option><option value="driffle">Driffle</option><option value="kinguin">Kinguin</option></select>
-        <input id="cCode" placeholder="Código" required maxlength="40" aria-label="Código">
-        <input id="cPct" type="number" min="1" max="80" step="1" placeholder="%" required aria-label="Descuento en %">
-        <label class="cexp">Caduca <input id="cExp" type="date" aria-label="Fecha de caducidad (opcional)"></label>
-        <button type="submit" class="go">Añadir</button>
-      </form>
-      <p class="txt">¿Sin cupón? Mira los que están vigentes ahora en cada tienda (se abre un agregador externo):</p>
-      <div id="couponLinks" class="clist"></div>
-    </section>
+      <!-- ============ Tu PC ============ -->
+      <section id="pc" class="sec-block">
+        <h1>Tu PC</h1>
+        <p class="sec-sub">Con esto te decimos en la ficha de cada juego si tu PC lo corre. Lo lee el navegador y no sale de aquí.</p>
+        <div class="card">
+          <div id="pcRows" class="pc-cards"></div>
+          <div class="pcact"><button type="button" id="pcRedo">Volver a leer</button><button type="button" id="pcReset" hidden>Quitar mis cambios</button></div>
+        </div>
+      </section>
 
-    <h2>Comisiones</h2>
-    <section class="field">
-      <p class="txt">Lo que suma cada tienda al pagar. Son estimadas hasta que confirmes una compra con el total que te cobraron (en la pestaña Ahorro de la ventana). Desde entonces se usa la comisión real.</p>
-      <div id="fees" class="clist"></div>
-    </section>
-    <p id="saved" class="saved" aria-live="polite"></p>
+      <!-- ============ Avisos ============ -->
+      <section id="avisos" class="sec-block">
+        <h1>Avisos de la lista de deseos</h1>
+        <p class="sec-sub">Cuándo te avisamos de que algo de tu lista bajó.</p>
+        <div class="card">
+          <div class="sw"><span><label for="dropAlerts">Avisarme de bajadas fuertes</label><small>Cuando un juego de tu lista baja de precio desde la última revisión, no por estar ya rebajado. Además de los límites que pongas a cada juego. Se revisa cada 6 horas.</small></span><input type="checkbox" id="dropAlerts" role="switch"></div>
+          <span class="lbl" id="pct-l">Cuánto tiene que bajar frente a Steam</span>
+          <div class="seg" role="radiogroup" aria-labelledby="pct-l" data-k="dropPct">
+            <button type="button" role="radio" data-v="40">−40%</button>
+            <button type="button" role="radio" data-v="50">−50%</button>
+            <button type="button" role="radio" data-v="60">−60%</button>
+            <button type="button" role="radio" data-v="75">−75%</button>
+          </div>
+          <span class="lbl" id="every-l">Como mucho un aviso de bajadas cada</span>
+          <div class="seg" role="radiogroup" aria-labelledby="every-l" data-k="alertEvery">
+            <button type="button" role="radio" data-v="6">6 horas</button>
+            <button type="button" role="radio" data-v="24">Día</button>
+            <button type="button" role="radio" data-v="168">Semana</button>
+          </div>
+          <small class="hint">Los juegos que bajan se juntan en un solo aviso. Los límites que pongas a un juego avisan al momento.</small>
+          <div class="sw"><span><label for="muted">Silenciar todos los avisos un día</label><small id="mutedTxt">También los límites y el aviso de rebajas. Lo que baje mientras tanto no se avisa después.</small></span><input type="checkbox" id="muted" role="switch"></div>
+        </div>
+      </section>
+
+      <!-- ============ Fuera de Steam ============ -->
+      <section id="fuera" class="sec-block">
+        <h1>Fuera de Steam</h1>
+        <p class="sec-sub">Detección en otras páginas y el panel lateral.</p>
+        <div class="card">
+          <div class="sw"><span><label for="detectAnywhere">Detectar juegos en otras páginas</label><small>YouTube, Twitch, Reddit, Metacritic, IGN… Aparece una etiqueta abajo a la derecha con el mejor precio. Chrome te pedirá permiso para leer las páginas que visitas. Solo actúa en webs de videojuegos, fichas de juegos de Wikipedia y páginas que marcan un videojuego (como la tarjeta de juego de YouTube o la categoría de Twitch); en ellas envía a Steam el nombre del posible juego. Nunca el título de otras páginas.</small></span><input type="checkbox" id="detectAnywhere" role="switch"></div>
+          <div class="f">
+            <span class="lbl">Panel lateral</span>
+            <p class="txt"><kbd>Alt</kbd> + <kbd>W</kbd> abre la comparación en un panel a la derecha, que sigue a la pestaña que estés mirando. Puedes cambiar el atajo en <span class="mono">chrome://extensions/shortcuts</span>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Cupones ============ -->
+      <section id="cupones" class="sec-block">
+        <h1>Cupones</h1>
+        <p class="sec-sub">Cupones que te han funcionado: se restan del precio de esa tienda y, al pulsar «Ir», el código se copia solo.</p>
+        <div class="card">
+          <div id="coupons" class="clist"></div>
+          <form id="addCoupon" class="cform">
+            <select id="cStore" aria-label="Tienda"><option value="ig">Instant Gaming</option><option value="eneba">Eneba</option><option value="driffle">Driffle</option><option value="kinguin">Kinguin</option></select>
+            <input id="cCode" placeholder="Código" required maxlength="40" aria-label="Código">
+            <input id="cPct" type="number" min="1" max="80" step="1" placeholder="%" required aria-label="Descuento en %">
+            <label class="cexp">Caduca <input id="cExp" type="date" aria-label="Fecha de caducidad (opcional)"></label>
+            <button type="submit" class="go">Añadir</button>
+          </form>
+          <p class="txt hint">¿Sin cupón? Mira los que están vigentes ahora en cada tienda:</p>
+          <div id="couponLinks" class="clist"></div>
+        </div>
+      </section>
+
+      <!-- ============ Comisiones ============ -->
+      <section id="comisiones" class="sec-block">
+        <h1>Comisiones</h1>
+        <p class="sec-sub">Lo que suma cada tienda al pagar. Son estimadas hasta que confirmes una compra con el total real (en la pestaña Ahorro).</p>
+        <div class="card">
+          <div id="fees" class="clist"></div>
+        </div>
+      </section>
+    </div>
   </main>
   <script type="module" src="./main.ts"></script>
 </body>
