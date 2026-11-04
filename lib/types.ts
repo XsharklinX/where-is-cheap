@@ -99,6 +99,8 @@ export interface Compare {
   feesChecked: Partial<Record<StoreId, number>>;
   /** 10: nombre de la edición que se compara, si no es la estándar. */
   edition?: string;
+  /** 1.5: fecha del último dato conocido si este resultado es una caché vieja que se está refrescando. */
+  staleAt?: number;
 }
 
 /** 2: mínimo histórico (CheapShark, tiendas oficiales de EE. UU.) expresado como descuento. */

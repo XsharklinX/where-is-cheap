@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canRun, cleanGpu, cpuScore, effectiveSpecs, gameReqs, gpuScore, needScore, parseReqs, ramFromBytes, ramNeed } from '../lib/pc';
+import { canRun, cleanGpu, cpuScore, effectiveSpecs, gameReqs, GPU_CATALOG, gpuScore, needScore, parseReqs, ramFromBytes, ramNeed } from '../lib/pc';
 
 const MIN = '<strong>Minimum:</strong><br><ul class="bb_ul"><li>Requires a 64-bit processor and operating system<br></li><li><strong>OS *:</strong> Windows 10<br></li><li><strong>Processor:</strong> Intel Core i5-8400 | AMD Ryzen 3 3300X<br></li><li><strong>Memory:</strong> 12 GB RAM<br></li><li><strong>Graphics:</strong> NVIDIA GeForce GTX 1060 3 GB or AMD Radeon RX 580 4 GB<br></li><li><strong>DirectX:</strong> Version 12<br></li></ul>';
 const REC = '<strong>Recommended:</strong><br><ul class="bb_ul"><li><strong>Processor:</strong> Intel Core i7-8700K | AMD Ryzen 5 3600X<br></li><li><strong>Memory:</strong> 16 GB RAM<br></li><li><strong>Graphics:</strong> NVIDIA GeForce GTX 1070 8 GB or AMD Radeon RX VEGA 56 8 GB<br></li></ul>';
@@ -51,6 +51,13 @@ describe('la gráfica', () => {
     expect(s('NVIDIA GeForce 8800 GT')).toBeGreaterThan(1);
     expect(gpuScore('Intel UHD Graphics 630')?.integrated).toBe(true);
     expect(gpuScore('Google SwiftShader')).toBeNull();
+  });
+  it('el catálogo se puede elegir y se reconoce', () => {
+    expect(GPU_CATALOG).toContain('NVIDIA GeForce GTX 1080');
+    expect(GPU_CATALOG).toContain('AMD Radeon RX 6600 XT');
+    expect(GPU_CATALOG).toContain('Intel UHD Graphics 630');
+    expect(gpuScore('NVIDIA GeForce GTX 1080')?.score).toBe(74);
+    expect(gpuScore('AMD Radeon RX 6600 XT')?.score).toBe(97);
   });
   it('varias opciones: la de tu marca, o la más fácil', () => {
     const req = 'NVIDIA GeForce GTX 1060 3 GB or AMD Radeon RX 580 4 GB';

@@ -8,7 +8,7 @@ import { prettyRegion } from './region';
 import type { SellerNote } from './stores/kinguin';
 import type { Compare, Edition, Offer, Settings, StoreId } from './types';
 import { CURRENCIES, STORES } from './types';
-import { andList, esc, failedNote, footHTML, local, localNum, logo, money, TAG_SVG, usd } from './ui';
+import { andList, esc, failedNote, footHTML, local, localNum, logo, money, shortDate, TAG_SVG, usd } from './ui';
 
 export interface BlockState { open: boolean; showNo: boolean; chart: boolean; editions: Edition[]; edition?: string; run?: RunCheck | null; sellers?: Record<string, SellerNote | null> }
 
@@ -94,7 +94,9 @@ function editionsHTML(st: BlockState): string {
 export function headHTML(c: Compare | null, s: Settings, st: BlockState): string {
   const k = blockCase(c, s);
   const spin = c && pendingOf(c, s).length ? '<span class="b-spin" aria-hidden="true"></span>' : '';
-  return `<div class="b-h">${TAG_SVG('#1f1a22', 16)}<span class="b-k">${TITLES[k]}</span>${spin}${editionsHTML(st)}${c?.owned ? '' : verdictPill(c, st)}</div>`;
+  // 1.5: si esto es una caché vieja que se está refrescando, se dice cuándo se guardó.
+  const stale = c?.staleAt ? `<span class="b-stale" title="Precios de la última vez; se están actualizando" style="color:var(--mute);font-size:11px;font-weight:400">· ${shortDate(c.staleAt)}</span>` : '';
+  return `<div class="b-h">${TAG_SVG('#1f1a22', 16)}<span class="b-k">${TITLES[k]}</span>${stale}${spin}${editionsHTML(st)}${c?.owned ? '' : verdictPill(c, st)}</div>`;
 }
 
 /** 10: el esqueleto ocupa lo mismo que el bloque terminado, para que la página no salte al llegar los precios. */

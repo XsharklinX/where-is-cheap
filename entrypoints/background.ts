@@ -18,7 +18,7 @@ import type { BundleItem, Compare, Edition, Game, HistLow, RawOffer, SearchHit, 
 import { STORE_IDS, STORES } from '@/lib/types';
 
 const TTL = 30 * 60 * 1000;
-type Cached = { game: Game; raw: RawOffer[]; failed: StoreId[]; at: number };
+type Cached = { game: Game; raw: RawOffer[]; failed: StoreId[]; at: number; staleAt?: number };
 type Part = Cached & { pending: StoreId[] };
 const SEARCHERS = { ig: searchIG, eneba: (q: string) => searchEneba(q), driffle: (q: string) => searchDriffle(q), kinguin: searchKinguin };
 
@@ -128,9 +128,16 @@ async function loadRaw(appid: number, fresh: boolean, ed?: Edition, onPart?: (p:
     const c = (await browser.storage.session.get(key))[key] as Cached | undefined;
     if (c && Date.now() - c.at <= TTL) return c;
   }
+  // 1.5 franja instantánea: lo último que supimos del juego se enseña al momento, y se refresca encima.
+  let lastKnown: Cached | null = null;
+  if (!fresh && onPart) {
+    const lk = (await browser.storage.local.get(`cmpLast:${key}`))[`cmpLast:${key}`] as Cached | undefined;
+    if (lk && Date.now() - lk.at <= 30 * 86_400_000) lastKnown = lk;
+  }
   const entry: { last?: Part; listeners: Set<(p: Part) => void>; done: Promise<Cached> } = { listeners: new Set(onPart ? [onPart] : []), done: null as any };
   const emit = (p: Part) => { entry.last = p; for (const l of entry.listeners) l(p); };
   entry.done = (async () => {
+    if (lastKnown) emit({ ...lastKnown, pending: [...STORE_IDS], staleAt: lastKnown.at });
     const s = await getSettings();
     let game = await steamGame(appid);
     if (ed) game = editionGame(game, ed);
@@ -139,7 +146,11 @@ async function loadRaw(appid: number, fresh: boolean, ed?: Edition, onPart?: (p:
     emit({ game, raw: [], failed: [], at: Date.now(), pending: [...STORE_IDS] });
     const { raw, failed } = await gather(game.name, SEARCHERS, s.country, (p) => emit({ game, ...p, at: Date.now() }));
     const c: Cached = { game, raw, failed, at: Date.now() };
-    if (failed.length < STORE_IDS.length) await browser.storage.session.set({ [key]: c });
+    if (failed.length < STORE_IDS.length) {
+      await browser.storage.session.set({ [key]: c });
+      // Lo último conocido se guarda para la próxima vez: así la franja pinta al instante.
+      await browser.storage.local.set({ [`cmpLast:${key}`]: c }).catch(() => {});
+    }
     return c;
   })();
   live.set(key, entry);
@@ -187,6 +198,7 @@ async function compareApp(appid: number, fresh: boolean, opts: { edition?: Editi
     verdict: v, owned,
     ownsBase: c.game.isDlc && c.game.baseAppid && user.at ? user.owned.includes(c.game.baseAppid) : null,
     pending, low, feesChecked: checked, edition: ed?.label,
+    ...(c.staleAt != null ? { staleAt: c.staleAt } : {}),
   });
   const c = await loadRaw(appid, fresh, ed, opts.onPart ? (p) => opts.onPart!(build(p, p.pending)) : undefined);
   const first = build(c, []);

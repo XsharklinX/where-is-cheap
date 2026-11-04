@@ -2,7 +2,7 @@
   "name": "where-is-cheap",
   "description": "Dónde sale más barato el juego de Steam que tienes abierto, con el precio real y tu región.",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",

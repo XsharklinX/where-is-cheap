@@ -359,3 +359,22 @@ export function detectGpu(doc: Document = document): string {
     return '';
   }
 }
+
+/* ---------- 1.5: catálogo de gráficas ---------- */
+
+const cap = (s: string) => s.replace(/(^|[ -])([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase());
+
+/** Todas las gráficas de la tabla, con su nombre, para elegir la tuya en Ajustes cuando el navegador no la detecta. */
+export const GPU_CATALOG: string[] = (() => {
+  const out: string[] = [];
+  for (const k of Object.keys(NV)) out.push(`NVIDIA GeForce ${k.toUpperCase()}`);
+  for (const k of Object.keys(AMD)) out.push(k === 'radeon vii' ? 'AMD Radeon VII' : `AMD Radeon ${k.toUpperCase()}`);
+  for (const k of Object.keys(INTEL)) {
+    if (k.startsWith('arc ')) out.push(`Intel Arc ${k.slice(4).toUpperCase()}`);
+    else if (k.startsWith('iris')) out.push(`Intel Iris ${cap(k.replace(/^iris\s*/, ''))}`.trim());
+    else if (k.startsWith('uhd')) out.push(`Intel UHD Graphics ${k.slice(4)}`);
+    else if (k.startsWith('hd')) out.push(`Intel HD Graphics ${k.slice(3)}`);
+    else out.push(`Intel ${k.toUpperCase()}`);
+  }
+  return [...new Set(out)].sort((a, b) => a.localeCompare(b));
+})();

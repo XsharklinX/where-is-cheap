@@ -4,14 +4,14 @@ import { call } from '@/lib/api';
 import { couponExpired } from '@/lib/compare';
 import { getCoupons, setCoupons } from '@/lib/data';
 import type { FeeTable, Learned } from '@/lib/fees';
-import { cpuScore, detectGpu, gpuScore, softwareGpu, type PcAuto, type PcManual } from '@/lib/pc';
+import { cpuScore, detectGpu, GPU_CATALOG, gpuScore, softwareGpu, type PcAuto, type PcManual } from '@/lib/pc';
 import { fxFromCharge, getRates } from '@/lib/rates';
 import { getSettings, saveSettings } from '@/lib/settings';
 import type { Pay, Settings, StoreId } from '@/lib/types';
 import { COUPON_URLS, CURRENCIES, STORE_IDS, STORES } from '@/lib/types';
 import { andList, esc, logo, shortDate, TAG_SVG } from '@/lib/ui';
 
-document.getElementById('brand')!.innerHTML = `${TAG_SVG('#121014', 30)}<h1>Where is cheap</h1>`;
+document.getElementById('brand')!.innerHTML = `${TAG_SVG('#121014', 30)}<h1>Where is cheap</h1><span class="ver">v${browser.runtime.getManifest().version}</span>`;
 const saved = document.getElementById('saved')!;
 let timer = 0;
 const DAY = 86_400_000;
@@ -65,9 +65,10 @@ async function initPc(force = false) {
   const ramState = (v: number | null) => v ? chip('ok', 'Leída') : chip('warn', 'Sin leer');
   const ramVal = manual.ramGB ?? auto.ramGB;
   box.innerHTML = `
-    <label class="lbl" for="pcGpu">Gráfica</label><input id="pcGpu" maxlength="120" value="${esc(manual.gpu ?? '')}" placeholder="${esc(auto.gpu || 'Por ejemplo: NVIDIA GeForce RTX 3060')}"><span id="pcGpuS">${gpuState(manual.gpu || auto.gpu)}</span>
+    <label class="lbl" for="pcGpu">Gráfica</label><input id="pcGpu" maxlength="120" list="gpu-list" value="${esc(manual.gpu ?? '')}" placeholder="${esc(auto.gpu || 'Escribe o elige tu gráfica (p. ej. NVIDIA GeForce GTX 1080)')}"><span id="pcGpuS">${gpuState(manual.gpu || auto.gpu)}</span>
     <label class="lbl" for="pcCpu">Procesador</label><input id="pcCpu" maxlength="120" value="${esc(manual.cpu ?? '')}" placeholder="${esc(auto.cpu || 'Por ejemplo: AMD Ryzen 5 5600X')}"><span id="pcCpuS">${cpuState(manual.cpu || auto.cpu)}</span>
-    <label class="lbl" for="pcRam">Memoria</label><span class="ram"><input id="pcRam" type="number" min="1" max="1024" step="1" inputmode="numeric" value="${manual.ramGB ?? ''}" placeholder="${auto.ramGB ?? ''}">GB</span><span id="pcRamS">${ramState(ramVal)}</span>`;
+    <label class="lbl" for="pcRam">Memoria</label><span class="ram"><input id="pcRam" type="number" min="1" max="1024" step="1" inputmode="numeric" value="${manual.ramGB ?? ''}" placeholder="${auto.ramGB ?? ''}">GB</span><span id="pcRamS">${ramState(ramVal)}</span>
+    <datalist id="gpu-list">${GPU_CATALOG.map((g) => `<option value="${esc(g)}"></option>`).join('')}</datalist>`;
   $('pcReset').hidden = !(manual.gpu || manual.cpu || manual.ramGB);
   const gpuIn = $<HTMLInputElement>('pcGpu'), cpuIn = $<HTMLInputElement>('pcCpu'), ramIn = $<HTMLInputElement>('pcRam');
   const refresh = () => {
