@@ -45,8 +45,15 @@ export function cleanOfferTitle(title: string): string {
   return dropStandard(dropTrailingNoise(norm(t).split(' ')).join(' '));
 }
 
-export function sameGame(steamName: string, offerTitle: string): boolean {
+export function sameGame(steamName: string, offerTitle: string, year?: number): boolean {
   const a = dropStandard(norm(steamName));
-  const b = cleanOfferTitle(offerTitle);
-  return a.length > 0 && a === b;
+  if (!a.length) return false;
+  if (a === cleanOfferTitle(offerTitle)) return true;
+  // 1.8.1: las tiendas marcan los remakes con el año («Resident Evil 4 (2023)», «Amerzone (2025)»). Si es el año en
+  // que salió este juego en Steam (±1), es este; si es otro, es el original y se sigue rechazando.
+  if (year && !/\b(19|20)\d{2}\b/.test(steamName)) {
+    const m = offerTitle.match(/[([]\s*((?:19|20)\d{2})\s*[)\]]/);
+    if (m && Math.abs(Number(m[1]) - year) <= 1) return a === cleanOfferTitle(offerTitle.replace(m[0], ' '));
+  }
+  return false;
 }

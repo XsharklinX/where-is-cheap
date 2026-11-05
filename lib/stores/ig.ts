@@ -14,9 +14,14 @@ export async function searchIG(query: string, country: string): Promise<RawOffer
     body: JSON.stringify({ params }),
   });
   if (!r.ok) throw new Error(`Instant Gaming ${r.status}`);
-  const d = await r.json();
-  return (d.hits ?? [])
-    .filter((h: any) => h.type === 'Steam' && !h.is_prepaid && !h.is_subscription && Number(h.price) > 0)
+  return parseIG(await r.json());
+}
+
+/** Los productos de Steam que se pueden comprar ya. 1.8.1: has_stock 0 = agotado (Elden Ring a €31.99 sin existencias
+ *  salía como mejor precio y no se podía comprar). Si el campo falta, se da por disponible. */
+export function parseIG(d: any): RawOffer[] {
+  return (d?.hits ?? [])
+    .filter((h: any) => h.type === 'Steam' && !h.is_prepaid && !h.is_subscription && Number(h.price) > 0 && h.has_stock !== 0 && h.has_stock !== '0' && h.has_stock !== false)
     .map(
       (h: any): RawOffer => ({
         store: 'ig',

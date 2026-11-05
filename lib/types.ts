@@ -43,6 +43,8 @@ export interface Game {
   /** Precio sin rebaja en Steam. */
   steamInitialUSD?: number | null;
   steamDiscount?: number;
+  /** 1.8.1: año de salida en Steam, para reconocer «(2023)» en los títulos de las tiendas. */
+  year?: number;
   isFree: boolean;
   isDlc?: boolean;
   /** appid del juego base si es un DLC. */

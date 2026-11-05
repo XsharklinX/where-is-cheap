@@ -99,10 +99,13 @@ describe('1.8 (3): «Mejor esperar», con números', () => {
     expect(html).toContain('$5.93');
   });
   it('sin mínimo de CheapShark usa el historial guardado, y sin historial solo las rebajas', () => {
-    const h = [{ t: NOW - 20 * DAY, steam: 69.99, best: 22 }, { t: NOW - 5 * DAY, steam: 69.99, best: 27 }];
+    const h = [{ t: NOW - 20 * DAY, steam: 69.99, best: 22 }, { t: NOW - 12 * DAY, steam: 69.99, best: 30 }, { t: NOW - 5 * DAY, steam: 69.99, best: 27 }];
     const html = waitHTML(cmp({ verdict: wait, history: h }), S, NOW);
     expect(html).toContain('estuvo a <b>$22.00</b>');
     expect(html).toContain('$3.83');
+    // 1.8.1: con 2 días guardados (un precio raro de un día) no se dice «estuvo a».
+    const short = waitHTML(cmp({ verdict: wait, history: [{ t: NOW - 2 * DAY, steam: 59.99, best: 35.81 }, { t: NOW - 1.5 * DAY, steam: 59.99, best: 35.81 }, { t: NOW - 1.2 * DAY, steam: 59.99, best: 40 }] }), S, NOW);
+    expect(short).not.toContain('estuvo a');
     const bare = waitHTML(cmp({ verdict: wait }), S, NOW);
     expect(bare).toContain('en 19 días.');
     expect(bare).not.toContain('ahorrar');

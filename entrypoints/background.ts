@@ -1,6 +1,6 @@
 import { gather, planCart, rank, savings, type CartItem, type Searcher } from '@/lib/compare';
 import { errReport, errText, pageKey, PROBES, pushErr, SEEN_TTL, storeDown, withSeen, type ErrEntry, type Expect, type HealthMap, type Seen } from '@/lib/health';
-import { autoBoughtIds, keyToRemind, getCoupons, getHistory, getLearned, getLedger, getNames, getSteamStatus, getUser, getWish, setHistory, setLearned, setLedger, setNames, setSteamStatus, setUser, setWish, type LedgerEntry, type SteamStatus, type SteamUser, type WishItem } from '@/lib/data';
+import { autoBoughtIds, cleanHistories, keyToRemind, getCoupons, getHistory, getLearned, getLedger, getNames, getSteamStatus, getUser, getWish, setHistory, setLearned, setLedger, setNames, setSteamStatus, setUser, setWish, type LedgerEntry, type SteamStatus, type SteamUser, type WishItem } from '@/lib/data';
 import { mergeFees, plausible, round2 } from '@/lib/fees';
 import { addPoint, nextSale, verdict } from '@/lib/history';
 import { getLow, toLow, waitWorth } from '@/lib/low';
@@ -125,6 +125,7 @@ async function steamGame(appid: number): Promise<Game> {
     steamInitialUSD: usd ? p.initial / 100 : null,
     steamDiscount: usd ? p.discount_percent : 0,
     isDlc: d.data.type === 'dlc',
+    year: Number(String(d.data.release_date?.date ?? '').match(/\b(19|20)\d{2}\b/)?.[0]) || undefined,
     baseAppid: d.data.fullgame?.appid ? Number(d.data.fullgame.appid) : undefined,
   };
 }
@@ -251,10 +252,27 @@ function hasTwin(name: string, appid: number): Promise<boolean> {
       // La búsqueda normal de Steam (no storesearch, que ordena por popularidad y se salta los nombres iguales).
       const r = await fetch(`https://store.steampowered.com/search/results/?term=${encodeURIComponent(name)}&json=1&category1=998&cc=do&l=english&count=25`);
       const d = await r.json();
-      return (d.items ?? []).some((it: any) => {
-        const id = Number(String(it.logo ?? '').match(/\/apps\/(\d+)\//)?.[1]);
-        return id && id !== appid && norm(String(it.name)) === norm(name);
-      });
+      const ids: number[] = (d.items ?? []).map((it: any) => ({ id: Number(String(it.logo ?? '').match(/\/apps\/(\d+)\//)?.[1]), name: String(it.name) }))
+        .filter((x: { id: number; name: string }) => x.id && x.id !== appid && norm(x.name) === norm(name)).map((x: { id: number }) => x.id);
+      if (!ids.length) return false;
+      // 1.8.1: un «gemelo» solo cuenta si se puede vender. Los que aún no salen («Coming soon») no tienen claves, y uno
+      // con 10 veces menos recomendaciones que este no es el que venden las tiendas de claves («Haven» de 2020 frente a
+      // dos «Haven» sin fecha). Si Steam no responde, se cuenta (mejor perder una oferta que enseñar otro juego).
+      const info = async (id: number) => {
+        const a = await (await fetch(`https://store.steampowered.com/api/appdetails?appids=${id}&cc=do&l=english`)).json();
+        const g = a?.[id]?.data;
+        if (!a?.[id]?.success || !g) throw new Error('sin datos');
+        return { soon: !!g.release_date?.coming_soon, recs: Number(g.recommendations?.total ?? 0) };
+      };
+      const mine = await info(appid).catch(() => null);
+      for (const id of ids) {
+        const t = await info(id).catch(() => null);
+        if (!t || !mine) return true;
+        if (t.soon) continue;
+        if (mine.recs >= 200 && mine.recs >= t.recs * 10) continue;
+        return true;
+      }
+      return false;
     })().catch(() => false));
   }
   return twins.get(k)!;
@@ -279,7 +297,7 @@ async function compareApp(appid: number, fresh: boolean, opts: { edition?: Editi
     offers: rank(c.game, withSeen(c.raw, seen), rates, s, coupons, table).map((o) => (c.game.twin && o.fit === 'ok' ? { ...o, fit: 'warn' as const, fitText: TWIN_TEXT, fitWhy: TWIN_WHY } : o)),
     failed: c.failed, rates, pay: s.pay, payBy: s.payBy, at: c.at, history,
     // 11: tiendas que la revisión diaria vio mal y que hoy no han dado nada: «no la pudimos leer», no «no está».
-    down: STORE_IDS.filter((id) => storeDown(health, id) && !c.raw.some((o) => o.store === id && sameGame(c.game.name, o.title)) && !pending.includes(id)),
+    down: STORE_IDS.filter((id) => storeDown(health, id) && !c.raw.some((o) => o.store === id && sameGame(c.game.name, o.title, c.game.year)) && !pending.includes(id)),
     verdict: v, owned,
     ownsBase: c.game.isDlc && c.game.baseAppid && user.at ? user.owned.includes(c.game.baseAppid) : null,
     pending, low, feesChecked: checked, edition: ed?.label,
@@ -1023,6 +1041,19 @@ export default defineBackground(() => {
 
   browser.runtime.onInstalled.addListener(({ reason }) => {
     if (reason === 'install') void browser.tabs.create({ url: browser.runtime.getURL('/options.html#bienvenida' as any) });
+    // 1.8.1: lo guardado de la lista de deseos se calculó con el emparejado viejo (gemelos que no salen, remakes con año,
+    // agotados de Instant Gaming). Se borra una vez: la lista vuelve a buscar en vivo. También lo último visto, para que
+    // la oferta que antes se perdía no cuente como «bajó» en los avisos.
+    if (reason === 'update') void (async () => {
+      if ((await browser.storage.local.get('mig181b')).mig181b) return;
+      const wish = await getWish();
+      for (const w of Object.values(wish)) { delete w.checkedAt; delete w.lastBest; delete w.lastStore; delete w.lastUrl; }
+      await setWish(wish);
+      await browser.storage.local.remove('badgeCache');
+      // El «mejor precio» del historial también se guardó con esos fallos (Elden Ring a $35.81 agotado): fuera.
+      // El de Steam se queda, es fiable.
+      await browser.storage.local.set({ ...cleanHistories(await browser.storage.local.get(null)), mig181b: Date.now() });
+    })().catch(() => {});
     // Solo si no existen: recargar o actualizar la extensión no debe adelantar la revisión (ni sus avisos).
     void (async () => {
       if (!(await browser.alarms.get('wishlist'))) browser.alarms.create('wishlist', { periodInMinutes: 360, delayInMinutes: 5 });

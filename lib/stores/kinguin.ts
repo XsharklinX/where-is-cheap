@@ -40,7 +40,9 @@ export function parseKinguin(d: any, country: string): RawOffer[] {
 }
 
 export async function searchKinguin(query: string, country: string): Promise<RawOffer[]> {
-  const r = await fetch(`https://www.kinguin.net/services/library/api/v1/products/search?phrase=${encodeURIComponent(query)}&size=25`);
+  const r = await fetch(`https://www.kinguin.net/services/library/api/v1/products/search?phrase=${encodeURIComponent(query)}&size=25&platforms=2`);
+  // 1.8.1: platforms=2 = solo Steam. Sin el filtro, la búsqueda se llena de anuncios de cuentas (plataforma 13) y las claves
+  // de juegos conocidos (Elden Ring) no llegaban a los 25 primeros.
   if (!r.ok) throw new Error(`Kinguin ${r.status}`);
   return parseKinguin(await r.json(), country);
 }

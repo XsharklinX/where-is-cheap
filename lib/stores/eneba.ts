@@ -26,8 +26,17 @@ export function parseEnebaHtml(html: string): RawOffer[] {
     });
 }
 
-export async function searchEneba(query: string): Promise<RawOffer[]> {
-  const r = await fetch(`https://www.eneba.com/store/all?drms%5B%5D=steam&text=${encodeURIComponent(query)}`);
+async function enebaQuery(query: string, extra = ''): Promise<RawOffer[]> {
+  const r = await fetch(`https://www.eneba.com/store/all?drms%5B%5D=steam&text=${encodeURIComponent(query)}${extra}`);
   if (!r.ok) throw new Error(`Eneba ${r.status}`);
   return parseEnebaHtml(await r.text());
+}
+
+// 1.8.1: la búsqueda da 20 resultados, mezclando DLC, ediciones y regiones que no activan en RD (Europa, Asia…).
+// Una segunda, solo con las regiones que sirven (LATAM y global), saca las claves que se quedaban fuera. Se juntan.
+export async function searchEneba(query: string): Promise<RawOffer[]> {
+  const [main, rd] = await Promise.allSettled([enebaQuery(query), enebaQuery(query, '&regions%5B%5D=latam&regions%5B%5D=global')]);
+  if (main.status === 'rejected') throw main.reason;
+  const seen = new Set<string>();
+  return [...main.value, ...(rd.status === 'fulfilled' ? rd.value : [])].filter((o) => !seen.has(o.url) && !!seen.add(o.url));
 }

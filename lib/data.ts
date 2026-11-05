@@ -56,6 +56,15 @@ export function keyToRemind(ledger: LedgerEntry[], owned: number[], now = Date.n
     && now - x.at > 3 * DAYMS && now - x.at < 30 * DAYMS && !owned.includes(x.appid));
 }
 
+/** 1.8.1: los historiales sin el «mejor precio» guardado antes del arreglo (agotados, gemelos); el de Steam se queda. */
+export function cleanHistories(all: Record<string, unknown>): Record<string, HistoryPoint[]> {
+  const out: Record<string, HistoryPoint[]> = {};
+  for (const [k, v] of Object.entries(all)) {
+    if (k.startsWith('hist:') && Array.isArray(v)) out[k] = (v as HistoryPoint[]).map((p) => ({ t: p.t, steam: p.steam ?? null, best: null }));
+  }
+  return out;
+}
+
 /* Nombres de juegos ya consultados. */
 export const getNames = () => get<Record<number, string>>('names', {});
 export const setNames = (n: Record<number, string>) => set('names', n);

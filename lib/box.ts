@@ -1,7 +1,7 @@
 // 1.7: la caja de compra. En la ficha de Steam lleva la forma de las cajas «Buy» de Steam (skin 'steam'); en la ventana,
 // la misma estructura con la estética de la extensión (skin 'pop'). Lo secundario va en chips que abren su parte debajo.
 import { call, trackClicks } from './api';
-import { alertHTML, blockCase, chartHTML, dlcBundle, dlcExtra, dlcHTML, dlcToPrice, giftScope, groupStores, panelFootHTML, pendingOf, regionShort, runChip, runPaneHTML, sellersToAsk, tableHTML, tipHTML, type BlockState, type DlcPrice, type DlcView } from './block';
+import { alertHTML, blockCase, dlcBundle, dlcExtra, dlcHTML, dlcToPrice, giftScope, groupStores, panelFootHTML, pendingOf, regionShort, runChip, runPaneHTML, sellersToAsk, tableHTML, tipHTML, type BlockState, type DlcPrice, type DlcView } from './block';
 import { savings } from './compare';
 import { monthYear, nextSale, saleText } from './history';
 import { saveSettings } from './settings';
@@ -120,7 +120,8 @@ const waitShown = (c: Compare, s: Settings) => {
 /** El precio más bajo guardado de un día anterior a hoy, con su fecha. */
 function histLow(c: Compare, now = Date.now()): { usd: number; at: number } | null {
   const past = c.history.filter((p) => p.best != null && now - p.t > DAY);
-  if (!past.length) return null;
+  // 1.8.1: con menos de 14 días guardados, «estuvo a» no dice nada (y un precio raro de un día lo estropea).
+  if (past.length < 3 || now - past[0].t < 14 * DAY) return null;
   const m = past.reduce((a, b) => (b.best! < a.best! ? b : a));
   return { usd: m.best!, at: m.t };
 }
@@ -146,6 +147,24 @@ export function waitHTML(c: Compare, s: Settings, now = Date.now()): string {
     bits.push(`${esc(sale.name)} en ${sale.days === 1 ? '1 día' : `${sale.days} días`}${save}.`);
   }
   return `<div class="x-line wait"><span>${bits.join(' ')}</span><button type="button" class="x-lk" data-a="pane" data-p="chart">Ver historial ▸</button></div>`;
+}
+
+/** 1.8.1: el panel del veredicto, sin gráfica. Hoy fuera, Steam, el mínimo de fiar y la razón del veredicto. */
+export function factsHTML(c: Compare, s: Settings, now = Date.now()): string {
+  const top = c.offers.find((o) => o.fit === 'ok');
+  const tile = (label: string, value: string, sub: string, cls = '') => `<div class="x-ft${cls ? ` ${cls}` : ''}"><span>${label}</span><b>${value}</b><small>${sub}</small></div>`;
+  const tiles = [
+    top ? tile('Hoy fuera de Steam', money(top.totalUSD, c, s), esc(STORES[top.store].name), 'x-fb') : tile('Hoy fuera de Steam', '—', 'Sin ofertas que activen en RD'),
+    c.game.steamUSD != null ? tile('En Steam', money(c.game.steamUSD, c, s), c.game.steamDiscount ? `con −${c.game.steamDiscount} %` : 'precio normal') : tile('En Steam', '—', 'No se vende ahora'),
+  ];
+  const h = histLow(c, now);
+  if (c.low?.usd != null && c.low.usd > 0) tiles.push(tile('Mínimo histórico', `≈ ${money(c.low.usd, c, s)}`, `−${c.low.pct} % en ${monthYear(c.low.date)}`, 'x-fl'));
+  else if (h) tiles.push(tile('Lo más bajo que vimos', money(h.usd, c, s), `el ${shortDate(h.at)}`, 'x-fl'));
+  else tiles.push(tile('Mínimo histórico', 'Sin datos', 'Se llena con los días'));
+  const sale = nextSale(now);
+  const saleLine = sale.live || (sale.bf && sale.days <= 30) ? `<p class="x-fs">${esc(saleText(sale))}. ${sale.live ? 'Las tiendas de claves también bajan estos días.' : 'Steam y las tiendas de claves suelen bajar esa semana.'}</p>` : '';
+  const why = c.verdict.detail && !c.verdict.detail.startsWith(saleText(sale)) ? `<p class="x-fs">${esc(c.verdict.detail)}</p>` : '';
+  return `<div class="x-facts">${tiles.join('')}</div>${why}${saleLine}`;
 }
 
 /** 1.8 (4): la edición superior, si fuera de Steam sale casi igual que la estándar. */
@@ -201,10 +220,8 @@ function chipsHTML(c: Compare | null, s: Settings, st: BoxState, skin: Skin): st
       const label = v.kind === 'buy' ? 'Buen precio' : v.kind === 'wait' ? 'Mejor esperar' : v.title;
       const sale = k === 'best' || k === 'steam' ? saleShort() : '';
       if (!(skin === 'steam' && waitShown(c, s))) out.push(chip('chart', st, `<i></i>${esc(label)}${sale ? ` · ${esc(sale)}` : ''}`, cls, v.detail));
-      const top = c.offers.find((o) => o.fit === 'ok');
-      const sp = sparkSVG(c.history, top?.totalUSD ?? null);
-      const low = Math.min(...c.history.filter((p) => p.best != null && p.t >= Date.now() - 90 * DAY).map((p) => p.best!), top?.totalUSD ?? Infinity);
-      if (sp) out.push(chip('chart', st, `${sp}<span>mín. <b>${usd(low)}</b></span>`, 'spark', 'Precio de la mejor oferta en los últimos 90 días'));
+      // 1.8.1: sin la línea en miniatura (con pocos días no decía nada); el mínimo solo si es de fiar.
+      if (c.low?.usd != null && c.low.usd > 0) out.push(chip('chart', st, `<span>mín. histórico <b>${usd(c.low.usd)}</b></span>`, '', `Lo más bajo en tiendas oficiales (${monthYear(c.low.date)})`));
     }
   }
   const run = runChip(st.run);
@@ -321,9 +338,7 @@ export function createBox(root: HTMLElement, appid: number, skin: Skin, settings
       swapRows($('.b-rows'), tableHTML(last, s, st));
       $('.b-pf').innerHTML = panelFootHTML(last, s);
     } else if (p === 'chart') {
-      const sale = nextSale(Date.now());
-      const saleLine = (sale.live || (sale.bf && sale.days <= 30)) && !last.verdict.detail.includes(sale.name) ? `<p class="x-sale">${esc(saleText(sale))}. ${sale.live ? 'Las tiendas de claves también bajan estos días.' : 'Si no te corre prisa, espera: Steam y las tiendas de claves bajan esa semana.'}</p>` : '';
-      el.innerHTML = saleLine + chartHTML(last, s);
+      el.innerHTML = factsHTML(last, s);
     } else if (p === 'run') el.innerHTML = runPaneHTML(st.run);
     else if (p === 'dlc') el.innerHTML = st.dlc ? dlcHTML({ ...st.dlc, open: true }, last, s, st, true) : '';
     else if (p === 'alert') {

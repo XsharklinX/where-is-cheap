@@ -7,7 +7,7 @@ import { STORES } from './types';
 /** Convierte, aplica cupones y comisiones, filtra y ordena. Pura: se prueba sin red. */
 export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, coupons: Coupon[] = [], fees: FeeTable = FEES, now = Date.now()): Offer[] {
   const offers = raw
-    .filter((o) => sameGame(game.name, o.title))
+    .filter((o) => sameGame(game.name, o.title, game.year))
     .filter((o) => o.dlc === undefined || game.isDlc === undefined || o.dlc === game.isDlc)
     .filter((o) => s.marketplaces || !STORES[o.store].marketplace)
     .filter((o) => !s.hiddenStores?.includes(o.store))
