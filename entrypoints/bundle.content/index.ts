@@ -4,12 +4,14 @@ import { getSettings } from '@/lib/settings';
 import type { BundleItem, Rates } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { esc, logo, money, TAG_SVG } from '@/lib/ui';
+import { claimPage } from '@/lib/claim';
 
 // 9: en la página de un pack de Steam (bundle o paquete), ¿sale mejor el pack o comprar cada juego donde esté más barato?
 export default defineContentScript({
   matches: ['https://store.steampowered.com/bundle/*', 'https://store.steampowered.com/sub/*'],
   cssInjectionMode: 'ui',
   async main(ctx) {
+    if (!claimPage(ctx, 'bundle')) return;
     const m = location.pathname.match(/^\/(bundle|sub)\/(\d+)/);
     if (!m) return;
     const [, kind, id] = m;

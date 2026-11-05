@@ -1,9 +1,9 @@
 // 1.7: la caja de compra. En la ficha de Steam lleva la forma de las cajas «Buy» de Steam (skin 'steam'); en la ventana,
 // la misma estructura con la estética de la extensión (skin 'pop'). Lo secundario va en chips que abren su parte debajo.
 import { call, trackClicks } from './api';
-import { alertHTML, blockCase, chartHTML, dlcBundle, dlcExtra, dlcHTML, dlcToPrice, groupStores, panelFootHTML, pendingOf, regionShort, runChip, runPaneHTML, sellersToAsk, tableHTML, tipHTML, type BlockState, type DlcPrice, type DlcView } from './block';
+import { alertHTML, blockCase, chartHTML, dlcBundle, dlcExtra, dlcHTML, dlcToPrice, giftScope, groupStores, panelFootHTML, pendingOf, regionShort, runChip, runPaneHTML, sellersToAsk, tableHTML, tipHTML, type BlockState, type DlcPrice, type DlcView } from './block';
 import { savings } from './compare';
-import { nextSale, saleText } from './history';
+import { monthYear, nextSale, saleText } from './history';
 import { saveSettings } from './settings';
 import type { SellerNote } from './stores/kinguin';
 import type { Compare, HistoryPoint, Offer, Settings, StoreId } from './types';
@@ -12,7 +12,9 @@ import { andList, esc, failedNote, local, logo, money, shortDate, swapRows, TAG_
 
 export type Pane = 'stores' | 'chart' | 'run' | 'dlc' | 'alert' | null;
 export type Skin = 'steam' | 'pop';
-export interface BoxState extends BlockState { pane: Pane; dlc: DlcView | null; target: number | null }
+/** 1.8 (4): otra edición que fuera de Steam sale casi igual que la estándar. */
+export interface Upsell { label: string; usd: number; diff: number }
+export interface BoxState extends BlockState { pane: Pane; dlc: DlcView | null; target: number | null; upsell?: Upsell | null; full?: boolean }
 
 const ARROW = '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 export const BELL = '<svg width="12" height="12" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/></svg>';
@@ -54,18 +56,30 @@ const TITLES = {
   loading: 'Buscando el mejor precio fuera de Steam',
   owned: 'Ya lo tienes',
   steam: 'Steam tiene el mejor precio',
-  best: 'Cómpralo fuera de Steam',
+  best: 'Más barato fuera de Steam',
   none: 'Fuera de Steam no hay ofertas que activen en RD',
 } as const;
 
 const kindLow = (o: Offer) => (o.kind === 'key' ? 'clave' : o.kind === 'gift' ? 'regalo' : 'cuenta');
 
-function subHTML(c: Compare, s: Settings, top: Offer | undefined): string {
+/** 1.8 (5): si ya lo tienes, la oferta que más sirve para regalar: la que vale en cualquier país antes que la más barata. */
+export function giftTop(c: Compare): Offer | undefined {
+  const g = groupStores(c.offers, true).groups[0];
+  return g && g.top.fit === 'ok' ? c.offers[g.top.i] : undefined;
+}
+
+function subHTML(c: Compare, s: Settings, top: Offer | undefined, skin: Skin = 'steam'): string {
   const k = blockCase(c, s);
   const waiting = pendingOf(c, s);
   const later = waiting.length ? ` · falta ${andList(waiting.map((id) => STORES[id].name))}` : '';
   const stale = c.staleAt ? ` · <span class="x-mute" title="Precios de la última vez; se están actualizando">${shortDate(c.staleAt)}</span>` : '';
-  if (k === 'owned') return `${top ? `Para regalar: desde ${money(top.totalUSD, c, s)} en ${STORES[top.store].name}` : 'Está en tu biblioteca.'}${later}`;
+  if (k === 'owned') {
+    if (!top) return `Está en tu biblioteca.${later}`;
+    const scope = giftScope(top) === 0 ? 'vale para cualquier país' : giftScope(top) === 2 ? 'solo si tu amigo es de RD' : `solo ${esc(regionShort(top))}`;
+    return skin === 'steam'
+      ? `Lo que vale para cualquier país, primero${later}`
+      : `Para regalar: ${money(top.totalUSD, c, s)} en ${STORES[top.store].name}, ${scope}${later}`;
+  }
   if (k === 'none') {
     const nNo = c.offers.filter((o) => o.fit === 'no').length;
     return c.offers.length ? `Hay ${c.offers.length} ${c.offers.length === 1 ? 'oferta' : 'ofertas'} ${nNo === c.offers.length ? 'de otras regiones' : 'de otras regiones, cuentas o precios dudosos'}.` : c.failed.length ? esc(failedNote(c)) : 'No está en Instant Gaming, Eneba, Driffle ni Kinguin con el mismo nombre y edición.';
@@ -79,12 +93,13 @@ function subHTML(c: Compare, s: Settings, top: Offer | undefined): string {
 }
 
 /** El bloque de precio y el botón, como el «precio + Add to Cart» de Steam. */
-function actHTML(c: Compare, s: Settings, top: Offer | undefined): string {
+function actHTML(c: Compare, s: Settings, top: Offer | undefined, inl = false): string {
   const k = blockCase(c, s);
+  const cls = `x-act${inl ? ' inl' : ''}`;
   if (k === 'loading') return '<div class="x-act x-skel" aria-hidden="true"><i></i></div>';
   if (k !== 'best' || !top) {
-    if (k === 'steam' && c.game.steamUSD != null) return `<div class="x-act"><span class="x-pr">${money(c.game.steamUSD, c, s)} en Steam</span><span class="x-note">Cómpralo en Steam</span></div>`;
-    if (k === 'owned' && top) return `<div class="x-act"><a class="x-go" href="${esc(top.url)}" target="_blank" rel="noopener noreferrer" data-store="${top.store}" data-i="${c.offers.indexOf(top)}">${logo(top.store, STORES[top.store].name)}Ir a ${STORES[top.store].name} ${ARROW}</a></div>`;
+    if (k === 'steam' && c.game.steamUSD != null) return `<div class="${cls}"><span class="x-pr">${money(c.game.steamUSD, c, s)} en Steam</span><span class="x-note">Cómpralo en Steam</span></div>`;
+    if (k === 'owned' && top) return `<div class="${cls}"><span class="x-pr b-price" tabindex="0">${money(top.totalUSD, c, s)}${tipHTML(top, c, s)}</span><a class="x-go" href="${esc(top.url)}" target="_blank" rel="noopener noreferrer" data-store="${top.store}" data-i="${c.offers.indexOf(top)}">${logo(top.store, STORES[top.store].name)}Regalar desde ${STORES[top.store].name} ${ARROW}</a></div>`;
     return '';
   }
   const save = savings(c);
@@ -93,7 +108,73 @@ function actHTML(c: Compare, s: Settings, top: Offer | undefined): string {
     : `<span class="x-pr b-price" tabindex="0">${money(top.totalUSD, c, s)}${tipHTML(top, c, s)}</span>`;
   const rd = s.currency === 'both' ? `<span class="x-rd">≈ ${local(top.totalUSD, c, s)}</span>` : '';
   const name = STORES[top.store].name;
-  return `<div class="x-act">${disc}${rd}<a class="x-go" href="${esc(top.url)}" target="_blank" rel="noopener noreferrer" data-store="${top.store}" data-i="${c.offers.indexOf(top)}">${logo(top.store, name)}Ir a ${name} ${ARROW}</a></div>`;
+  return `<div class="${cls}">${disc}${rd}<a class="x-go" href="${esc(top.url)}" target="_blank" rel="noopener noreferrer" data-store="${top.store}" data-i="${c.offers.indexOf(top)}">${logo(top.store, name)}Ir a ${name} ${ARROW}</a></div>`;
+}
+
+/** 1.8 (3): si el veredicto es esperar y hay línea propia, la píldora no lo repite. */
+const waitShown = (c: Compare, s: Settings) => {
+  const k = blockCase(c, s);
+  return !c.owned && !pendingOf(c, s).length && c.verdict.kind === 'wait' && (k === 'best' || k === 'steam');
+};
+
+/** El precio más bajo guardado de un día anterior a hoy, con su fecha. */
+function histLow(c: Compare, now = Date.now()): { usd: number; at: number } | null {
+  const past = c.history.filter((p) => p.best != null && now - p.t > DAY);
+  if (!past.length) return null;
+  const m = past.reduce((a, b) => (b.best! < a.best! ? b : a));
+  return { usd: m.best!, at: m.t };
+}
+
+/** 1.8 (3): «Mejor esperar», con el mínimo y lo que podrías ahorrar. Sin inventar cifras: lo que no se sabe no sale. */
+export function waitHTML(c: Compare, s: Settings, now = Date.now()): string {
+  if (!waitShown(c, s)) return '';
+  const top = c.offers.find((o) => o.fit === 'ok');
+  const cur = Math.min(top?.totalUSD ?? Infinity, c.game.steamUSD ?? Infinity);
+  if (!Number.isFinite(cur)) return '';
+  const bits = ['<b class="w">Mejor esperar:</b>'];
+  let low: number | null = null;
+  if (c.low?.usd != null && c.low.usd > 0 && c.low.usd < cur - 0.01) {
+    low = c.low.usd;
+    bits.push(`el mínimo histórico fue de unos <b>${money(low, c, s)}</b> (${monthYear(c.low.date)}).`);
+  } else {
+    const h = histLow(c, now);
+    if (h && h.usd < cur - 0.01) { low = h.usd; bits.push(`estuvo a <b>${money(h.usd, c, s)}</b> el ${shortDate(h.at)}.`); }
+  }
+  const sale = nextSale(now);
+  if (!sale.live) {
+    const save = low != null && cur - low >= 0.5 ? `: podrías ahorrar hasta <b class="sv">${money(cur - low, c, s)}</b>` : '';
+    bits.push(`${esc(sale.name)} en ${sale.days === 1 ? '1 día' : `${sale.days} días`}${save}.`);
+  }
+  return `<div class="x-line wait"><span>${bits.join(' ')}</span><button type="button" class="x-lk" data-a="pane" data-p="chart">Ver historial ▸</button></div>`;
+}
+
+/** 1.8 (4): la edición superior, si fuera de Steam sale casi igual que la estándar. */
+function upsellHTML(c: Compare, s: Settings, st: BoxState): string {
+  const u = st.upsell;
+  if (!u || c.edition || c.owned || blockCase(c, s) !== 'best') return '';
+  const more = u.diff > 0.005 ? `solo <b class="sv">${money(u.diff, c, s)} más</b>` : '<b class="sv">lo mismo o menos</b>';
+  return `<div class="x-line"><span>${TAG_SVG('#ffb547', 11)}</span><span>La <b class="n">${esc(u.label)}</b> fuera de Steam: <b>${money(u.usd, c, s)}</b>, ${more}</span><button type="button" class="x-lk" data-ed="${esc(u.label)}">Ver ofertas ▸</button></div>`;
+}
+
+/** 1.8 (7): toda la caja en una línea; «Ver ofertas» abre la completa. */
+function lineHTML(c: Compare | null, s: Settings): string {
+  const tag = `<span class="x-tg">${TAG_SVG('#ffb547', 12)}</span>`;
+  const more = '<button type="button" class="x-lk" data-a="full">Ver ofertas ▸</button>';
+  if (!c) return `${tag}<span class="x-mute">Fuera de Steam: buscando…</span>`;
+  const k = blockCase(c, s);
+  const top = c.offers.find((o) => o.fit === 'ok');
+  if (k === 'loading') return `${tag}<span class="x-mute">Fuera de Steam: buscando…</span>`;
+  if (k === 'owned') {
+    const g = giftTop(c);
+    return `${tag}<span>Ya lo tienes${g ? ` · para regalar, <b>${money(g.totalUSD, c, s)}</b> en ${STORES[g.store].name}` : ''}</span>${g ? more : ''}`;
+  }
+  if (k === 'none') return `${tag}<span class="x-mute">Fuera de Steam no hay ofertas que activen en RD.</span>${c.offers.length ? more : ''}`;
+  if (k === 'steam') return `${tag}<span>Steam tiene el mejor precio. Fuera, desde ${money(top!.totalUSD, c, s)} en ${STORES[top!.store].name}.</span>${more}`;
+  const save = savings(c);
+  const tail = ['activa en RD'];
+  if (save && c.game.steamUSD != null) tail.push(`ahorras ${money(c.game.steamUSD - top!.totalUSD, c, s)}`);
+  if (waitShown(c, s)) tail.push('<span class="w">mejor esperar</span>');
+  return `${tag}<span>Fuera de Steam: <b>${money(top!.totalUSD, c, s)}</b> en ${STORES[top!.store].name}</span><span class="x-mute">· ${tail.join(' · ')}</span>${more}`;
 }
 
 const chip = (pane: Exclude<Pane, null>, st: BoxState, inner: string, cls = '', title = '') =>
@@ -119,7 +200,7 @@ function chipsHTML(c: Compare | null, s: Settings, st: BoxState, skin: Skin): st
       const cls = v.kind === 'buy' ? 'ok' : v.kind === 'wait' ? 'wait' : 'gh';
       const label = v.kind === 'buy' ? 'Buen precio' : v.kind === 'wait' ? 'Mejor esperar' : v.title;
       const sale = k === 'best' || k === 'steam' ? saleShort() : '';
-      out.push(chip('chart', st, `<i></i>${esc(label)}${sale ? ` · ${esc(sale)}` : ''}`, cls, v.detail));
+      if (!(skin === 'steam' && waitShown(c, s))) out.push(chip('chart', st, `<i></i>${esc(label)}${sale ? ` · ${esc(sale)}` : ''}`, cls, v.detail));
       const top = c.offers.find((o) => o.fit === 'ok');
       const sp = sparkSVG(c.history, top?.totalUSD ?? null);
       const low = Math.min(...c.history.filter((p) => p.best != null && p.t >= Date.now() - 90 * DAY).map((p) => p.best!), top?.totalUSD ?? Infinity);
@@ -134,7 +215,7 @@ function chipsHTML(c: Compare | null, s: Settings, st: BoxState, skin: Skin): st
   const usable = groups.reduce((n, g) => n + 1 + g.rest.length, 0);
   if (skin === 'steam' && (others.length || no.length)) {
     const logos = others.slice(0, 3).map((g) => logo(g.store, STORES[g.store].name)).join('');
-    const label = others.length ? `${others.length === 1 ? `${STORES[others[0].store].name} ${money(others[0].top.totalUSD, c, s)}` : `${others.length} tiendas más`}` : `${no.length} no ${no.length === 1 ? 'activa' : 'activan'} en RD`;
+    const label = others.length ? `${others.length === 1 ? `${STORES[others[0].store].name} ${money(others[0].top.totalUSD, c, s)}` : k === 'best' ? `${others.length} tiendas más` : `${others.length} tiendas`}` : `${no.length} no ${no.length === 1 ? 'activa' : 'activan'} en RD`;
     out.push(chip('stores', st, `${logos}${label}`, 'st', `Ver ${usable + no.length === 1 ? 'la oferta' : `las ${usable + no.length} ofertas`}`));
   } else if (skin === 'pop' && (usable > groups.length || no.length)) {
     out.push(chip('stores', st, `Todas las ofertas (${usable + no.length})`, 'st', no.length ? `${no.length} no ${no.length === 1 ? 'activa' : 'activan'} en RD` : ''));
@@ -256,22 +337,42 @@ export function createBox(root: HTMLElement, appid: number, skin: Skin, settings
     box.classList.toggle('usd', s.currency === 'usd');
     if (last) applySellers(last);
     const c = last;
-    const top = c?.offers.find((o) => o.fit === 'ok');
     const k = blockCase(c, s);
+    const top = c && k === 'owned' ? giftTop(c) : c?.offers.find((o) => o.fit === 'ok');
+    // 7: la caja en una línea, hasta que pulses «Ver ofertas».
+    const line = skin === 'steam' && s.boxMode === 'line' && !st.full;
+    box.classList.toggle('line', line);
+    if (line) {
+      $('.x-top').innerHTML = `<div class="x-l1">${lineHTML(c, s)}</div>`;
+      box.classList.remove('open');
+      root.querySelectorAll<HTMLElement>('.x-pane').forEach((p) => (p.hidden = true));
+      if (c) trackClicks(box, c, toastRoot);
+      return;
+    }
     if (!c) {
+      box.classList.remove('open');
       $('.x-top').innerHTML = `<div class="x-h">${skin === 'steam' ? `<h4>${TITLES.loading}</h4><span class="x-mk">${TAG_SVG('#262a33', 13)}Where is cheap</span>` : ''}</div><div class="x-sub x-skel"><i></i></div>${chipsHTML(null, s, st, skin)}<div class="x-act x-skel" aria-hidden="true"><i></i></div>`;
     } else {
       const drop = k === 'best' && !c.staleAt ? dropSince(c.history, top?.totalUSD ?? null) : null;
       const dropHTML = drop ? `<div class="x-drop">▼ Bajó <b>${money(drop.usd, c, s)}</b> desde el ${shortDate(drop.at)}</div>` : '';
+      const spin = pendingOf(c, s).length ? '<span class="x-spin" aria-hidden="true"></span>' : '';
+      const title = k === 'owned' && top ? 'Ya lo tienes · para regalar' : TITLES[k];
+      // 1: con un panel abierto, el precio y el botón suben a la fila del título y no cuelgan bajo la tabla.
+      const act = actHTML(c, s, top);
+      const open = skin === 'steam' && st.pane != null && act !== '';
+      box.classList.toggle('open', open);
+      const subLine = `<div class="x-sub">${c.edition ? `<b style="color:#fff;font-weight:400">«${esc(c.edition)}»</b> · ` : ''}${subHTML(c, s, top)}${c.edition && hooks.std ? ' · <a href="#" data-a="std" style="color:#67c1f5">Volver a la estándar</a>' : ''}</div>`;
       const head = skin === 'steam'
-        ? `<div class="x-h"><h4>${TITLES[k]}</h4><span class="x-mk">${TAG_SVG('#262a33', 13)}Where is cheap</span>${pendingOf(c, s).length ? '<span class="x-spin" aria-hidden="true"></span>' : ''}</div>`
-        : `<div class="x-h"><b class="x-k">${TITLES[k]}</b>${pendingOf(c, s).length ? '<span class="x-spin" aria-hidden="true"></span>' : ''}</div>`;
+        ? open
+          ? `<div class="x-h x-ho"><div class="x-ht"><h4>${title}</h4>${subLine}</div>${spin}${actHTML(c, s, top, true)}</div>`
+          : `<div class="x-h"><h4>${title}</h4><span class="x-mk">${TAG_SVG('#262a33', 13)}Where is cheap</span>${spin}</div>${subLine}`
+        : `<div class="x-h"><b class="x-k">${title}</b>${spin}</div>`;
       const best = skin === 'pop' && top && k === 'best'
         ? `<div class="x-best">${logo(top.store, STORES[top.store].name)}<div class="x-bl"><div class="x-bp"><b class="b-price big" tabindex="0">${money(top.totalUSD, c, s)}${tipHTML(top, c, s)}</b>${savings(c) ? `<span class="x-pct">−${savings(c)!.pct}%</span>` : ''}</div><div class="x-sub">${subHTML(c, s, top)}${s.currency === 'both' ? ` · ≈ ${local(top.totalUSD, c, s)}` : ''}</div></div><a class="x-go" href="${esc(top.url)}" target="_blank" rel="noopener noreferrer" data-store="${top.store}" data-i="${c.offers.indexOf(top)}">Ir ${ARROW}</a></div>`
         : '';
       $('.x-top').innerHTML = skin === 'steam'
-        ? `${head}<div class="x-sub">${c.edition ? `<b style="color:#fff;font-weight:400">«${esc(c.edition)}»</b> · ` : ''}${subHTML(c, s, top)}${c.edition && hooks.std ? ' · <a href="#" data-a="std" style="color:#67c1f5">Volver a la estándar</a>' : ''}</div>${dropHTML}${chipsHTML(c, s, st, skin)}${actHTML(c, s, top)}`
-        : `${head}${best || `<div class="x-sub x-solo">${subHTML(c, s, top)}</div>${k === 'owned' || k === 'steam' ? actHTML(c, s, top) : ''}`}${dropHTML}<div class="x-rows">${popRowsHTML(c, s)}</div>${chipsHTML(c, s, st, skin)}`;
+        ? `${head}${waitHTML(c, s)}${upsellHTML(c, s, st)}${dropHTML}${chipsHTML(c, s, st, skin)}${open ? '' : act}`
+        : `${head}${best || `<div class="x-sub x-solo">${subHTML(c, s, top, 'pop')}</div>${k === 'owned' || k === 'steam' ? actHTML(c, s, top) : ''}`}${dropHTML}<div class="x-rows">${popRowsHTML(c, s)}</div>${chipsHTML(c, s, st, skin)}`;
     }
     for (const p of ['stores', 'chart', 'run', 'dlc', 'alert'] as const) paintPane(p);
     if (c) {
@@ -303,6 +404,7 @@ export function createBox(root: HTMLElement, appid: number, skin: Skin, settings
         break;
       }
       case 'no': st.showNo = !st.showNo; paintPane('stores'); break;
+      case 'full': st.full = true; st.pane = 'stores'; paint(); break;
       case 'refresh': case 'retry': hooks.refresh(); break;
       case 'options': hooks.options(); break;
       case 'std': ev.preventDefault(); hooks.std?.(); break;

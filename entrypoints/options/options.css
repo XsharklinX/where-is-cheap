@@ -68,6 +68,11 @@ select { width: 100%; }
 .crow .chip + button, .crow button + button { margin-left: 0; }
 #fees .crow .mono { color: #d6cfd4; font-size: 12.5px; }
 #fees .crow .chip { margin-left: auto; }
+/* 1.8 (6): forma de pago de cada tienda */
+.crow .seg.mini { display: inline-flex; padding: 2px; border-radius: 7px; flex: none; }
+.crow .seg.mini button { margin: 0; border: 0; flex: none; padding: 4px 10px; font-size: 12px; border-radius: 5px; color: var(--mute); }
+.crow .seg.mini button[aria-checked="true"] { background: var(--tag); color: var(--tag-ink); }
+#fees .crow .mono { min-width: 150px; }
 
 .cform { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .cform input, .cform select { background: #141117; color: var(--ink); border: 1px solid #38323e; border-radius: 9px; padding: 8px 10px; font: inherit; font-size: 13px; }
@@ -123,3 +128,13 @@ kbd { font: 600 12px var(--f-mono); background: #141117; border: 1px solid #3832
 .wel-f { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
 .wel-btns { display: flex; gap: 8px; }
 .wel-btns .go { margin: 0; }
+
+/* 1.8 (11 y 13): estado de las tiendas y registro de fallos */
+#health .crow .mono { color: var(--mute); font-size: 12px; min-width: 110px; }
+#health .crow .chip { margin-left: auto; max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrow { display: flex; gap: 8px; margin-top: 10px; }
+.hrow .go { margin-left: 0; }
+.errlog { display: grid; gap: 4px; max-height: 260px; overflow: auto; }
+.erow { display: grid; grid-template-columns: 110px 110px minmax(0, 1fr) minmax(0, 1.4fr); gap: 10px; align-items: baseline; font-size: 12.5px; padding: 6px 10px; background: var(--row); border-radius: 8px; }
+.erow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.erow .mono { color: var(--mute); font-size: 12px; }

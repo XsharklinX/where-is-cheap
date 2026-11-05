@@ -83,8 +83,12 @@ export interface Compare {
   game: Game;
   offers: Offer[];
   failed: StoreId[];
+  /** 1.8 (11): tiendas que la revisión diaria vio mal y que hoy no dieron ofertas. */
+  down?: StoreId[];
   rates: Rates;
   pay: Pay;
+  /** 1.8 (6): forma de pago por tienda, si alguna paga distinto que `pay`. */
+  payBy?: Partial<Record<StoreId, Pay>>;
   at: number;
   history: HistoryPoint[];
   verdict: Verdict;
@@ -150,6 +154,10 @@ export interface Settings {
   hiddenSellers: string[];
   /** 1.7: ya pasó por los tres pasos de bienvenida. */
   onboarded: boolean;
+  /** 1.8 (7): en la ficha de Steam, la caja completa o solo una línea que la abre. */
+  boxMode: 'full' | 'line';
+  /** 1.8 (6): forma de pago de cada tienda que no paga como `pay`. */
+  payBy: Partial<Record<StoreId, Pay>>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -168,6 +176,8 @@ export const DEFAULT_SETTINGS: Settings = {
   hiddenStores: [],
   hiddenSellers: [],
   onboarded: false,
+  boxMode: 'full',
+  payBy: {},
 };
 
 export const STORES: Record<StoreId, { name: string; short: string; color: string; marketplace: boolean }> = {

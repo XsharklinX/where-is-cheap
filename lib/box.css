@@ -43,6 +43,40 @@
 .steam .x-go:hover { background: linear-gradient(to right, #ffd58a 5%, #ffb547 95%); }
 .steam .x-go img.sb { width: 18px; height: 18px; }
 
+/* 1.8 (1): con un panel abierto, el precio y el botón en la fila del título */
+.x-box.steam.open { padding-bottom: 15px; margin-bottom: 16px; }
+.steam.open .x-chips { padding-right: 0; }
+.steam .x-ho { align-items: flex-start; gap: 14px; }
+.steam .x-ht { flex: 1; min-width: 0; }
+.steam .x-act.inl { position: static; flex: none; margin-left: auto; }
+.steam .x-act.inl .b-tip { top: calc(100% + 10px); bottom: auto; }
+
+/* 1.8 (3 y 4): líneas de «Mejor esperar» y de la edición superior */
+.x-line { margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 7px 10px; border-radius: 3px; background: rgba(0,0,0,.22); font-size: 12.5px; color: #c6d4df; }
+.x-line.wait { background: rgba(255,209,102,.1); }
+.x-line b { color: #ffb547; font-weight: 700; font-variant-numeric: tabular-nums; }
+.x-line b.sv { color: #45d69b; } .x-line b.n { color: #fff; font-weight: 400; } .x-line b.w { color: #ffd166; }
+.x-line > span:first-child svg { display: block; }
+.x-lk { margin-left: auto; background: none; border: 0; padding: 0; color: #67c1f5; font: inherit; cursor: pointer; white-space: nowrap; }
+.x-lk:hover { color: #fff; text-decoration: underline; }
+
+/* 1.8 (7): la caja en una línea */
+.x-box.steam.line { padding: 9px 14px; margin-bottom: 20px; }
+.x-l1 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12.5px; }
+.x-l1 b { color: #ffb547; font-weight: 700; font-variant-numeric: tabular-nums; }
+.x-l1 .w { color: #ffd166; }
+.x-tg svg { display: block; }
+
+/* 1.8 (2 y 5): columna «¿Activa en RD?» / «Para quién» */
+.b-row .rg { display: grid; min-width: 0; line-height: 1.25; }
+.b-row .rg em { font-style: normal; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.b-row .rg small { font-size: 11px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.steam .b-row .rg small { color: #9aa4ad; }
+.b-row .rg .y { color: #45d69b; } .b-row .rg .m { color: #ffd166; } .b-row .rg .n { color: #ff8a8a; }
+.b-row.th .rg { display: block; }
+.b-gift { margin: 0; padding: 8px 10px; font-size: 11.5px; color: #9aa4ad; border-bottom: 1px solid rgba(255,255,255,.06); }
+.pop .b-row .rg { display: none; }
+
 .x-drop { display: inline-flex; align-items: center; gap: 6px; background: rgba(69,214,155,.13); border-radius: 2px; padding: 3px 9px; font-size: 12px; color: #c6d4df; margin-top: 8px; }
 .x-drop b { color: #45d69b; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-weight: 600; }
 
@@ -63,7 +97,7 @@
 .x-rq > div span:last-child { font-weight: 600; }
 .x-rq span.ok { color: #45d69b; } .x-rq span.warn { color: #ffd166; } .x-rq span.no { color: #ff6b6b; } .x-rq span.gh { color: #8f98a0; }
 .x-rq small { display: grid; grid-template-columns: 90px 1fr; color: #8f98a0; margin-bottom: 6px; } .x-rq small br { display: none; }
-.x-rq small i { font-style: normal; color: #67707b; }
+.x-rq small i { font-style: normal; color: #9aa4ad; }
 .x-rq small.n { display: block; border-top: 1px solid rgba(255,255,255,.08); padding-top: 6px; }
 .x-btn { background: rgba(103,193,245,.2); color: #67c1f5; border: 0; border-radius: 2px; padding: 4px 10px; font-size: 12px; margin: 4px 0 6px; cursor: pointer; }
 .x-btn:hover { background: #67c1f5; color: #fff; }
@@ -80,13 +114,20 @@
 .steam .b-row .ir { width: 24px; height: 22px; border-radius: 2px; background: rgba(103,193,245,.2); color: #67c1f5; }
 .steam .b-row.best .ir { background: #ffb547; color: #2a1a00; }
 .steam .b-row:hover { background: rgba(255,255,255,.04); }
-.steam .b-row.th { color: #556772; }
+.steam .b-row.th, .steam .b-row.th .ty, .steam .b-row.th .rd { color: #9aa4ad; font: 10.5px "Motiva Sans", Arial, sans-serif; letter-spacing: .06em; }
+/* 1.8: dentro de Steam, la letra de Steam también en tipos y precios (la de máquina de escribir desentonaba) */
+.steam .b-row .ty, .steam .b-row .rd { font: 12px "Motiva Sans", Arial, sans-serif; }
+.steam .b-row .tot, .steam .b-row .b-price { font: 400 14px "Motiva Sans", Arial, sans-serif; font-variant-numeric: tabular-nums; }
+.steam .x-chip b, .steam .x-drop b { font-family: "Motiva Sans", Arial, sans-serif; font-variant-numeric: tabular-nums; }
+.steam .b-row .nm .chip { justify-self: start; background: none; border: 0; border-radius: 0; padding: 0; font-size: 11.5px; color: #ffd166; border-bottom: 1px dotted rgba(255,209,102,.5); }
+.steam .b-row .nm .chip.no { color: #ff8a8a; border-bottom-color: rgba(255,138,138,.5); }
+.steam .b-fold .nx { color: #c6d4df; font-weight: 400; }
 .steam .b-sub, .steam .b-fold { border-bottom-color: rgba(255,255,255,.06); color: #8f98a0; }
 .steam .b-sub > span, .steam .b-sub a { color: #c6d4df; }
-.steam .b-f { border-top: 0; color: #67707b; }
+.steam .b-f { border-top: 0; color: #9aa4ad; }
 .steam .b-f button { border-color: rgba(103,193,245,.3); color: #67c1f5; background: none; border-radius: 2px; }
 .steam .b-chart { background: none; border: 0; padding: 6px 0; }
-.steam .b-chart svg { fill: #67707b; }
+.steam .b-chart svg { fill: #9aa4ad; }
 .steam .d-list { padding: 0; }
 .steam .d-row { border-top-color: rgba(255,255,255,.06); }
 .steam .d-row .nm { color: #c6d4df; }
@@ -95,7 +136,7 @@
 .steam .b-alert .in { background: rgba(0,0,0,.35); border-color: rgba(255,255,255,.12); border-radius: 2px; }
 .steam .b-alert button { border-radius: 2px; border-color: rgba(103,193,245,.3); color: #67c1f5; }
 .steam .b-alert .b-save { background: linear-gradient(to right, #ffc76a 5%, #f2a43a 95%); border: 0; color: #2a1a00; }
-.steam .b-alert small { color: #67707b; }
+.steam .b-alert small { color: #9aa4ad; }
 
 /* filas: el enlace no rompe la rejilla y el menú «…» va aparte (14) */
 .b-row > a.b-rl { display: contents; color: inherit; }
@@ -119,7 +160,8 @@
   .x-box.steam { padding-bottom: 14px; margin-bottom: 16px; }
   .steam .x-act { position: static; margin-top: 12px; width: max-content; max-width: 100%; }
   .steam .b-row, .steam.usd .b-row { grid-template-columns: 22px minmax(0, 1fr) 76px 26px 26px; }
-  .steam .b-row .ty, .steam .b-row .rd { display: none; }
+  .steam .b-row .ty, .steam .b-row .rd, .steam .b-row .rg { display: none; }
+  .steam .x-ho { flex-wrap: wrap; } .steam .x-act.inl { margin-left: 0; }
 }
 
 /* ---------- skin ventana ---------- */
@@ -187,4 +229,5 @@ a.x-pr-row:hover i { background: var(--tag); color: var(--tag-ink); }
 .ci-r img.sb { width: 16px; height: 16px; border-radius: 3px; }
 .ci-r span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ci-r b { font: 600 12.5px ui-monospace, "Cascadia Mono", Consolas, monospace; color: #fff; }
-.ci-f { margin-top: 6px; font-size: 11px; color: #67707b; }
+.ci-f { margin-top: 6px; font-size: 11px; color: #9aa4ad; }
+.b-row.gone { opacity: .6; } .b-row.gone .tot { color: #9aa4ad; }

@@ -73,7 +73,9 @@ export function trackClicks(root: HTMLElement | ShadowRoot, c: Compare, toastRoo
       if (!o) return;
       const net = o.priceUSD > 0 ? Math.round(o.price * (1 - o.couponUSD / o.priceUSD) * 100) / 100 : o.price;
       void call('click', {
-        entry: { appid: c.game.appid, name: c.game.name + (c.edition ? ` (${c.edition})` : ''), store: o.store, paidUSD: o.totalUSD, steamUSD: c.game.steamUSD, net, currency: o.currency, pay: c.pay, ownedAtClick: c.owned },
+        entry: { appid: c.game.appid, name: c.game.name + (c.edition ? ` (${c.edition})` : ''), store: o.store, paidUSD: o.totalUSD, steamUSD: c.game.steamUSD, net, currency: o.currency, pay: c.payBy?.[o.store] ?? c.pay, ownedAtClick: c.owned },
+        // 1.8 (12): lo que esperamos ver al llegar a la tienda, para comprobarlo allí.
+        expect: { url: o.url, store: o.store, price: o.price, currency: o.currency, name: c.game.name },
       }).catch(() => {});
       if (o.coupon) {
         void copy(o.coupon).then((ok) => toast(toastRoot, ok ? `Cupón ${o.coupon} copiado: pégalo al pagar` : `Tu cupón: ${o.coupon}`));

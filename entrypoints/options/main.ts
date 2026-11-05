@@ -3,7 +3,8 @@ import './options.css';
 import { call } from '@/lib/api';
 import { couponExpired } from '@/lib/compare';
 import { getCoupons, setCoupons } from '@/lib/data';
-import type { FeeTable, Learned } from '@/lib/fees';
+import type { ErrEntry, HealthMap } from '@/lib/health';
+import { cleanPayBy, payFor, payMixed, type FeeTable, type Learned, type PayBy } from '@/lib/fees';
 import { cpuScore, detectGpu, GPU_CATALOG, gpuScore, softwareGpu, type PcAuto, type PcManual } from '@/lib/pc';
 import { fxFromCharge, getRates } from '@/lib/rates';
 import { getSettings, saveSettings } from '@/lib/settings';
@@ -121,26 +122,72 @@ async function initPc(force = false) {
 /* ---------- 3: comisiones ---------- */
 
 async function renderFees() {
-  const { table, checked, learned, pay } = await call<{ table: FeeTable; checked: Partial<Record<StoreId, number>>; learned: Learned; pay: Pay }>('fees');
+  const { table, checked, learned, pay: general, payBy } = await call<{ table: FeeTable; checked: Partial<Record<StoreId, number>>; learned: Learned; pay: Pay; payBy: PayBy }>('fees');
+  const prefs = { pay: general, payBy };
   const box = $('fees');
   const fmt = (f: { pct: number; fixed: number }) => (f.pct === 0 && f.fixed === 0 ? 'sin comisión' : [f.pct ? `${f.pct}%` : '', f.fixed ? `$${f.fixed.toFixed(2)} por pedido` : ''].filter(Boolean).join(' + '));
+  // 1.8 (6): cada tienda con su forma de pago; la comisión de al lado es la de esa forma.
+  const seg = (id: StoreId, pay: Pay) => `<span class="seg mini" role="radiogroup" aria-label="Cómo pagas en ${esc(STORES[id].name)}">${(['card', 'paypal'] as Pay[]).map((p) => `<button type="button" role="radio" aria-checked="${p === pay}" data-pay="${p}" data-store="${id}">${p === 'card' ? 'Tarjeta' : 'PayPal'}</button>`).join('')}</span>`;
   box.innerHTML = STORE_IDS.map((id) => {
+    const pay = payFor(prefs, id);
     const n = learned[id]?.[pay]?.length ?? 0;
     const st = checked[id]
       ? `<span class="chip ok">comprobada el ${shortDate(checked[id]!)} · ${n} ${n === 1 ? 'compra' : 'compras'}</span><button type="button" data-reset="${id}">Volver a la estimada</button>`
       : table[id][pay].pct === 0 && table[id][pay].fixed === 0 ? '<span class="chip ok">no cobra comisión</span>' : '<span class="chip warn">estimada</span>';
-    return `<div class="crow">${logo(id, STORES[id].name)}<b>${STORES[id].name}</b><span class="mono">${fmt(table[id][pay])}</span>${st}</div>`;
+    return `<div class="crow">${logo(id, STORES[id].name)}<b>${STORES[id].name}</b>${seg(id, pay)}<span class="mono">${fmt(table[id][pay])}</span>${st}</div>`;
   }).join('');
   // 15: qué tiendas siguen con «est.» y cómo quitarlo.
-  const left = STORE_IDS.filter((id) => !checked[id] && (table[id][pay].pct || table[id][pay].fixed)).map((id) => STORES[id].name);
+  const left = STORE_IDS.filter((id) => { const p = payFor(prefs, id); return !checked[id] && (table[id][p].pct || table[id][p].fixed); }).map((id) => STORES[id].name);
+  const how = payMixed(prefs) ? 'Con la forma de pago que tiene cada tienda aquí.' : `Con ${general === 'card' ? 'tarjeta' : 'PayPal'}, que es lo que tienes elegido.`;
   box.innerHTML += left.length
-    ? `<p class="mute">Siguen estimadas: <b>${andList(left)}</b>. Compra desde «Ir» en ${left.length === 1 ? 'esa tienda' : 'una de ellas'} y, cuando la extensión te pregunte «¿Lo compraste?», escribe el total que pagaste: con eso calcula la comisión real y quita el «est.» de sus precios. Con ${pay === 'card' ? 'tarjeta' : 'PayPal'}, que es lo que tienes elegido arriba.</p>`
-    : `<p class="mute">Todas las comisiones están comprobadas con compras tuyas. Con ${pay === 'card' ? 'tarjeta' : 'PayPal'}, que es lo que tienes elegido arriba.</p>`;
+    ? `<p class="mute">Siguen estimadas: <b>${andList(left)}</b>. Compra desde «Ir» en ${left.length === 1 ? 'esa tienda' : 'una de ellas'} y, cuando la extensión te pregunte «¿Lo compraste?», escribe el total que pagaste: con eso calcula la comisión real y quita el «est.» de sus precios. ${how}</p>`
+    : `<p class="mute">Todas las comisiones están comprobadas con compras tuyas. ${how}</p>`;
+  box.querySelectorAll<HTMLButtonElement>('[data-pay]').forEach((b) => b.addEventListener('click', async () => {
+    const id = b.dataset.store as StoreId;
+    const s = await getSettings();
+    await saveSettings({ payBy: cleanPayBy({ pay: s.pay, payBy: { ...s.payBy, [id]: b.dataset.pay as Pay } }) });
+    flash(`${STORES[id].name}: pagas con ${b.dataset.pay === 'card' ? 'tarjeta' : 'PayPal'}`);
+    void renderFees();
+  }));
   box.querySelectorAll<HTMLButtonElement>('[data-reset]').forEach((b) => b.addEventListener('click', async () => {
     await call('feesReset', { store: b.dataset.reset });
     void renderFees();
     flash(`${STORES[b.dataset.reset as StoreId].name}: vuelve a la comisión estimada`);
   }));
+}
+
+/* ---------- 1.8 (11 y 13): estado de las tiendas y registro de fallos ---------- */
+
+let report = '';
+async function renderHealth(run = false) {
+  const { health, errLog, report: r } = await call<{ health: HealthMap; errLog: ErrEntry[]; report: string }>('health', { run, ua: navigator.userAgent });
+  report = r;
+  const when = (t: number) => new Date(t).toLocaleString('es-DO', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('health').innerHTML = STORE_IDS.map((id) => {
+    const h = health[id];
+    const st = !h ? '<span class="chip gh">sin revisar</span>'
+      : h.ok ? `<span class="chip ok">bien · ${h.n} ${h.n === 1 ? 'oferta' : 'ofertas'} en ${(h.ms / 1000).toFixed(1).replace('.', ',')} s</span>`
+        : `<span class="chip warn" title="${esc(h.why)}">no la pudimos leer: ${esc(h.why)}</span>`;
+    return `<div class="crow">${logo(id, STORES[id].name)}<b>${STORES[id].name}</b><span class="mono">${h ? when(h.at) : ''}</span>${st}</div>`;
+  }).join('');
+  $('errLog').innerHTML = errLog.length
+    ? [...errLog].reverse().map((e) => `<div class="erow"><span class="mono">${when(e.at)}</span><b>${e.store === 'steam' ? 'Steam' : STORES[e.store].name}</b><span>${esc(e.game)}</span><span class="mute">${esc(e.what)}</span></div>`).join('')
+    : '<p class="mute">Sin fallos guardados.</p>';
+}
+
+function initHealth() {
+  void renderHealth();
+  $('healthRun').addEventListener('click', async () => {
+    const b = $<HTMLButtonElement>('healthRun');
+    b.disabled = true; b.textContent = 'Revisando…';
+    try { await renderHealth(true); flash('Tiendas revisadas'); } catch { flash('No se pudo revisar'); }
+    b.disabled = false; b.textContent = 'Revisar ahora';
+  });
+  $('errCopy').addEventListener('click', async () => {
+    await renderHealth();
+    try { await navigator.clipboard.writeText(report); flash('Informe copiado: pégalo en tu mensaje'); } catch { flash('No se pudo copiar'); }
+  });
+  $('errClear').addEventListener('click', async () => { await call('errClear'); await renderHealth(); flash('Registro borrado'); });
 }
 
 /* ---------- 5: tarjeta en pesos ---------- */
@@ -192,14 +239,16 @@ async function initFx(s: Settings) {
 async function init() {
   const s = await getSettings();
   document.querySelectorAll<HTMLElement>('.seg[data-k]').forEach((seg) => {
-    const k = seg.dataset.k as 'pay' | 'currency' | 'dropPct' | 'alertEvery';
+    const k = seg.dataset.k as 'pay' | 'currency' | 'dropPct' | 'alertEvery' | 'boxMode';
     const paint = (v: string) => seg.querySelectorAll<HTMLButtonElement>('button').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.v === v)));
     paint(String(s[k]));
     seg.addEventListener('click', async (e) => {
       const b = (e.target as HTMLElement).closest('button');
       if (!b?.dataset.v) return;
       paint(b.dataset.v);
-      await saveSettings({ [k]: k === 'dropPct' || k === 'alertEvery' ? Number(b.dataset.v) : b.dataset.v } as Partial<Settings>);
+      // 1.8 (6): al cambiar la forma general, las tiendas que ya pagaban así dejan de ser excepción.
+      const extra = k === 'pay' ? { payBy: cleanPayBy({ pay: b.dataset.v as Pay, payBy: (await getSettings()).payBy }) } : {};
+      await saveSettings({ [k]: k === 'dropPct' || k === 'alertEvery' ? Number(b.dataset.v) : b.dataset.v, ...extra } as Partial<Settings>);
       flash();
       if (k === 'pay') void renderFees();
     });
@@ -268,6 +317,7 @@ async function init() {
   // 1.4: enlaces a los cupones vigentes de cada tienda (agregador externo).
   $('couponLinks').innerHTML = STORE_IDS.map((id) => `<a class="crow" href="${COUPON_URLS[id]}" target="_blank" rel="noopener noreferrer">${logo(id, STORES[id].name)}<b>${STORES[id].name}</b><span class="mute">Ver cupones ↗</span></a>`).join('');
   void renderFees();
+  initHealth();
   void initPc();
   $('pcRedo').addEventListener('click', () => void initPc(true).then(() => flash('Leído otra vez')));
   $('pcReset').addEventListener('click', async () => { await call('pcSet', { manual: {} }); await initPc(); flash('Cambios quitados'); });

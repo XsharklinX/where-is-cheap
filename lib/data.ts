@@ -39,6 +39,8 @@ export interface LedgerEntry {
   paidConfirmed?: boolean;
   /** 1.4: si ya tenías el juego cuando pulsaste «Ir». false = no lo tenías (se puede auto-confirmar si luego aparece en tu biblioteca). */
   ownedAtClick?: boolean;
+  /** 1.8 (9): cuándo se preguntó «¿Activaste la clave?» (una vez por entrada). */
+  keyAsked?: number;
 }
 export const getLedger = () => get<LedgerEntry[]>('ledger', []);
 export const setLedger = (l: LedgerEntry[]) => set('ledger', l);
@@ -46,6 +48,13 @@ export const setLedger = (l: LedgerEntry[]) => set('ledger', l);
 /** 1.4: compras que se dan por hechas solas: las que no tenías al pulsar «Ir» y ahora están en tu biblioteca. */
 export const autoBoughtIds = (ledger: LedgerEntry[], owned: number[]) =>
   ledger.filter((e) => e.state === 'pending' && e.ownedAtClick === false && owned.includes(e.appid)).map((e) => e.id);
+
+/** 1.8 (9): una clave que fuiste a comprar hace más de 3 días y que sigue sin estar en tu biblioteca. Una vez por entrada. */
+export function keyToRemind(ledger: LedgerEntry[], owned: number[], now = Date.now()): LedgerEntry | undefined {
+  const DAYMS = 86_400_000;
+  return ledger.find((x) => x.ownedAtClick === false && x.state !== 'skipped' && !x.keyAsked
+    && now - x.at > 3 * DAYMS && now - x.at < 30 * DAYMS && !owned.includes(x.appid));
+}
 
 /* Nombres de juegos ya consultados. */
 export const getNames = () => get<Record<number, string>>('names', {});

@@ -1,6 +1,7 @@
 import { call } from '@/lib/api';
 import type { StoreId } from '@/lib/types';
 import { STORES } from '@/lib/types';
+import { claimPage } from '@/lib/claim';
 
 // 9 y 1: el mejor precio fuera de Steam en los listados de Steam.
 // - Lista de deseos y búsqueda: píldora junto al nombre; lo que no se conoce se busca en vivo («Buscando precio…»).
@@ -33,7 +34,24 @@ const CSS = `
 /* 1.7 (5): en las sugerencias del buscador de Steam, al lado del precio */
 .wic-sg { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; color: #ffb547 !important; font: 700 12px "Motiva Sans", Arial, sans-serif; text-decoration: none !important; white-space: nowrap; }
 .wic-sg img { width: 13px; height: 13px; border-radius: 3px; }
+/* 1.8 (8): la campana del aviso de precio, junto al bloque */
+.wic-wlw { position: relative; display: inline-flex; align-items: center; gap: 4px; margin: 0 8px 0 0; vertical-align: middle; align-self: center; flex: none; }
+.wic-wlw .wic-wl { margin: 0; }
+.wic-bell { width: 30px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 2px; background: rgba(103,193,245,.12); color: #8fb8d6; cursor: pointer; padding: 0; }
+.wic-bell:hover { background: rgba(103,193,245,.25); color: #fff; }
+.wic-bell.on { background: rgba(255,181,71,.18); color: #ffb547; }
+.wic-pop { position: absolute; top: calc(100% + 6px); right: 0; z-index: 50; width: 250px; background: #17141a; border: 1px solid #2c2730; border-radius: 6px; padding: 10px 11px;
+  box-shadow: 0 10px 28px rgba(0,0,0,.55), inset 3px 0 0 #ffb547; font: 12.5px "Motiva Sans", Arial, sans-serif; color: #c6d4df; cursor: default; }
+.wic-pop label { display: block; color: #fff; margin-bottom: 6px; }
+.wic-pop .r { display: flex; gap: 6px; align-items: center; }
+.wic-pop .in { flex: 1; display: flex; align-items: center; gap: 3px; background: rgba(0,0,0,.35); border: 1px solid rgba(255,255,255,.14); border-radius: 2px; padding: 0 7px; color: #9aa4ad; }
+.wic-pop input { width: 100%; background: none; border: 0; color: #fff; font: inherit; padding: 6px 0; outline: none; }
+.wic-pop button { border: 0; border-radius: 2px; padding: 6px 10px; font: 700 12px "Motiva Sans", Arial, sans-serif; cursor: pointer; }
+.wic-pop .sv { background: linear-gradient(to right, #ffc76a 5%, #f2a43a 95%); color: #2a1a00; }
+.wic-pop .rm { background: none; color: #67c1f5; padding: 6px 2px; font-weight: 400; }
+.wic-pop small { display: block; margin-top: 6px; color: #9aa4ad; font-size: 11.5px; }
 `;
+const BELL = (on: boolean) => `<svg width="15" height="15" viewBox="0 0 24 24" aria-hidden="true" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4" fill="none"/></svg>`;
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 const appidOf = (href: string | null | undefined) => Number(href?.match(/\/app\/(\d+)/)?.[1]) || 0;
@@ -41,10 +59,14 @@ const appidOf = (href: string | null | undefined) => Number(href?.match(/\/app\/
 export default defineContentScript({
   matches: ['https://store.steampowered.com/*'],
   runAt: 'document_idle',
-  async main() {
+  async main(ctx) {
+    if (!claimPage(ctx, 'badges')) return;
     // null: ya se buscó y no hay nada que enseñar (gratis, ya lo tienes o Steam no respondió).
     let data: Record<number, Badge | null> = {};
     try { data = await call<Record<number, Badge>>('wishBadges'); } catch { return; }
+    // 1.8 (8): avisos ya puestos (para la campana llena).
+    let targets: Record<number, number> = {};
+    if (location.pathname.startsWith('/wishlist/')) targets = await call<Record<number, number>>('targets').catch(() => ({}));
     const style = document.createElement('style');
     style.textContent = CSS;
     document.head.append(style);
@@ -90,8 +112,60 @@ export default defineContentScript({
         a.innerHTML = '<span class="k">STEAM ES LO MÁS BARATO</span>';
       } else return null;
       a.addEventListener('click', (e) => e.stopPropagation());
-      return a;
+      // 1.8 (8): el bloque y la campana van juntos; el data-wic va en el envoltorio.
+      delete a.dataset.wic;
+      const w = document.createElement('span');
+      w.className = 'wic-wlw';
+      w.dataset.wic = String(appid);
+      w.append(a, bell(appid, d.best ?? d.steamUSD));
+      return w;
     };
+
+    /** 1.8 (8): «Avísame si baja de…» desde la lista de deseos, con el mismo aviso que la ficha. */
+    const bell = (appid: number, now: number | null): HTMLElement => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      const paint = () => {
+        const t = targets[appid];
+        b.className = `wic-bell${t != null ? ' on' : ''}`;
+        b.title = t != null ? `Te avisamos si baja de ${usd(t)}` : 'Avísame si baja de un precio';
+        b.setAttribute('aria-label', b.title);
+        b.innerHTML = BELL(t != null);
+      };
+      paint();
+      const close = () => b.parentElement?.querySelector('.wic-pop')?.remove();
+      b.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const w = b.parentElement!;
+        if (w.querySelector('.wic-pop')) { close(); return; }
+        document.querySelectorAll('.wic-pop').forEach((p) => p.remove());
+        const t = targets[appid];
+        const pop = document.createElement('form');
+        pop.className = 'wic-pop';
+        pop.innerHTML = `<label for="wic-t-${appid}">Avísame si baja de</label><div class="r"><span class="in">$<input id="wic-t-${appid}" type="number" min="0.5" step="0.5" inputmode="decimal" value="${t != null ? t.toFixed(2) : ''}" placeholder="${now != null ? (Math.floor(now * 0.8 * 2) / 2).toFixed(2) : ''}"></span><button type="submit" class="sv">Guardar</button>${t != null ? '<button type="button" class="rm">Quitar</button>' : ''}</div><small>${now != null ? `Hoy, lo más barato: ${usd(now)}. ` : ''}Te llega una notificación del navegador.</small>`;
+        ['click', 'mousedown', 'pointerdown', 'keydown'].forEach((ev) => pop.addEventListener(ev, (x) => x.stopPropagation()));
+        const inp = pop.querySelector('input')!;
+        pop.addEventListener('submit', async (x) => {
+          x.preventDefault();
+          const n = Number(inp.value);
+          if (!(n > 0)) { inp.setCustomValidity('Pon un precio mayor que 0'); inp.reportValidity(); return; }
+          const v = Math.round(n * 100) / 100;
+          try { await call('setTarget', { appid, target: v, name: titleOf(w) }); targets[appid] = v; paint(); close(); } catch { inp.setCustomValidity('No se pudo guardar'); inp.reportValidity(); }
+        });
+        pop.querySelector('.rm')?.addEventListener('click', async () => {
+          try { await call('setTarget', { appid, target: null }); delete targets[appid]; paint(); close(); } catch { /* se queda abierto */ }
+        });
+        w.append(pop);
+        inp.focus();
+      });
+      return b;
+    };
+    const titleOf = (w: Element) => {
+      const row = w.closest('[data-index]');
+      return row ? titleLink(row)?.textContent?.trim() : undefined;
+    };
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.wic-pop').forEach((p) => p.remove()); });
+    document.addEventListener('click', (e) => { if (!(e.target as Element).closest?.('.wic-wlw')) document.querySelectorAll('.wic-pop').forEach((p) => p.remove()); });
 
     /** 5: en las sugerencias del buscador, solo si ya lo sabemos. */
     const sgBadge = (appid: number): HTMLElement | null => {
@@ -169,7 +243,7 @@ export default defineContentScript({
     /* ---------- dónde va cada píldora ---------- */
     /** El enlace con el nombre del juego: lleva a /app/, no tiene imagen y no es el precio. */
     const titleLink = (row: Element) => [...row.querySelectorAll<HTMLAnchorElement>('a[href*="/app/"]')]
-      .find((a) => !a.dataset.wic && !a.querySelector('img') && a.textContent!.trim() && !/^([\s$€£¥\d.,%−-]+|free( to play)?|gratis|gratuito)$/i.test(a.textContent!.trim()));
+      .find((a) => !a.dataset.wic && !a.closest('[data-wic]') && !a.querySelector('img') && a.textContent!.trim() && !/^([\s$€£¥\d.,%−-]+|free( to play)?|gratis|gratuito)$/i.test(a.textContent!.trim()));
 
     /** Pone (o cambia, si la fila se recicló) la píldora de appid dentro de host. */
     const place = (host: HTMLElement, appid: number, put: (b: HTMLElement) => void, small: boolean, live: boolean) => {
@@ -204,7 +278,7 @@ export default defineContentScript({
           const appid = appidOf(t?.href);
           if (!t || !appid) continue;
           // 6: delante del precio de Steam (el enlace a /app/ cuyo texto es un precio); si no se encuentra, tras el nombre.
-          const price = [...row.querySelectorAll<HTMLAnchorElement>('a[href*="/app/"]')].find((a) => a !== t && !a.querySelector('img') && /\d/.test(a.textContent ?? '') && /^[\s$€£¥\d.,%−\-a-zA-Z]*$/.test(a.textContent!.trim()) && /[$€£¥]|\d[.,]\d{2}/.test(a.textContent!));
+          const price = [...row.querySelectorAll<HTMLAnchorElement>('a[href*="/app/"]')].find((a) => a !== t && !a.closest('[data-wic]') && !a.querySelector('img') && /\d/.test(a.textContent ?? '') && /^[\s$€£¥\d.,%−\-a-zA-Z]*$/.test(a.textContent!.trim()) && /[$€£¥]|\d[.,]\d{2}/.test(a.textContent!));
           place(row, appid, (b) => (price ? price.before(b) : t.after(b)), false, true);
         }
         pump();

@@ -16,9 +16,10 @@ export interface BlockState { open: boolean; showNo: boolean; chart: boolean; ed
 export interface StoreGroup { store: StoreId; top: Offer & { i: number }; rest: (Offer & { i: number })[] }
 
 /** 2 y 3: ofertas que sirven agrupadas por tienda (la más barata primero) y las que no activan en RD, aparte. */
-export function groupStores(offers: Offer[]): { groups: StoreGroup[]; no: (Offer & { i: number })[] } {
+export function groupStores(offers: Offer[], gift = false): { groups: StoreGroup[]; no: (Offer & { i: number })[] } {
   const withI = offers.map((o, i) => ({ ...o, i }));
-  const usable = withI.filter((o) => o.fit !== 'no').sort((a, b) => (a.fit === 'ok' ? 0 : 1) - (b.fit === 'ok' ? 0 : 1) || a.totalUSD - b.totalUSD);
+  const g = (o: Offer) => (gift ? giftScope(o) : 0);
+  const usable = withI.filter((o) => o.fit !== 'no').sort((a, b) => (a.fit === 'ok' ? 0 : 1) - (b.fit === 'ok' ? 0 : 1) || g(a) - g(b) || a.totalUSD - b.totalUSD);
   const by = new Map<StoreId, StoreGroup>();
   for (const o of usable) {
     const g = by.get(o.store);
@@ -32,6 +33,35 @@ export function regionShort(o: Offer): string {
   if (o.regionCheckedByStore) return o.regions.some((r) => /global|worldwide|ww/i.test(r)) ? 'Global' : 'Tu país';
   return o.regions.map(prettyRegion).join(', ') || 'sin región';
 }
+/** 1.8 (5): para regalar, qué tan lejos llega una oferta. 0: cualquier país; 1: una región (LATAM…); 2: solo tu país. */
+export function giftScope(o: Offer): 0 | 1 | 2 {
+  const r = regionShort(o);
+  return r === 'Global' ? 0 : r === 'Tu país' ? 2 : 1;
+}
+
+/** 1.8 (2): la región dicha como frase, para la línea pequeña de la columna. «Clave para tu país», «Clave LATAM, incluye RD». */
+function regionLine(o: Offer): string {
+  const r = regionShort(o);
+  const k = kindShort(o);
+  if (r === 'Global') return `${k} global`;
+  if (r === 'Tu país') return `${k} para tu país`;
+  if (r === 'sin región') return `${k} sin región`;
+  return o.fit === 'ok' ? `${k} ${r}, incluye RD` : `${k} ${r}`;
+}
+
+/** 1.8 (2 y 5): la columna «¿Activa en RD?» (o «Para quién» si ya lo tienes). */
+function fitCell(o: Offer, gift: boolean): string {
+  const tip = esc(o.fitWhy);
+  if (gift && o.fit === 'ok') {
+    const sc = giftScope(o);
+    const r = regionShort(o);
+    const lbl = sc === 0 ? 'Cualquier país' : sc === 2 ? 'Solo si tu amigo es de RD' : `Solo ${esc(r)}`;
+    return `<span class="rg" title="${tip}"><em class="${sc === 0 ? 'y' : 'm'}">${lbl}</em><small>${esc(regionLine({ ...o, fit: 'warn' }))}</small></span>`;
+  }
+  if (o.fit === 'ok') return `<span class="rg" title="${tip}"><em class="y">✓ Activa en RD</em><small>${esc(regionLine(o))}</small></span>`;
+  return `<span class="rg" title="${tip}"><em class="m">${esc(o.fitText)}</em><small>${esc(regionLine(o))}</small></span>`;
+}
+
 const ARROW = '<svg width="13" height="13" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 /** 4: la cuenta entera de una oferta, para el globo del precio. */
@@ -175,31 +205,35 @@ function altHTML(c: Compare, s: Settings, st: BlockState): string {
 
 /** 2 y 3: la tabla, con una fila por tienda y lo que no sirve plegado al final. */
 export function tableHTML(c: Compare, s: Settings, st: BlockState): string {
-  const { groups, no } = groupStores(c.offers);
+  const gift = c.owned;
+  const { groups, no } = groupStores(c.offers, gift);
   const both = s.currency === 'both';
-  const bestI = c.offers.findIndex((o) => o.fit === 'ok');
+  const bestI = groups[0]?.top.fit === 'ok' ? groups[0].top.i : -1;
   const row = (o: Offer & { i: number }) => {
     const nm = STORES[o.store].name;
-    const who = o.fit === 'warn'
-      ? `<span class="chip warn" data-tip="${esc(o.fitWhy)}" tabindex="0">${esc(o.fitText)}</span>`
-      : sellerHTML(st.sellers?.[o.url]) || `<span>${STORES[o.store].marketplace ? 'vende un tercero' : 'tienda'}</span>`;
+    const who = sellerHTML(st.sellers?.[o.url]) || `<span>${STORES[o.store].marketplace ? 'Vende un tercero' : 'Vende la tienda'}</span>`;
     const seller = st.sellers?.[o.url]?.name;
-    return `<div class="b-row${o.i === bestI ? ' best' : ''}" data-k="${esc(`${o.store}|${o.url}`)}"><a class="b-rl" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}" title="${esc(o.coupon ? `Abrir en ${nm} y copiar el cupón ${o.coupon}` : `Abrir en ${nm}`)}">
-      ${logo(o.store, nm)}<span class="nm"><b>${nm}</b>${who}</span><span class="ty">${kindShort(o)} · ${esc(regionShort(o))}</span>
+    return `<div class="b-row${o.i === bestI ? ' best' : ''}${o.fit === 'warn' ? ' warn' : ''}" data-k="${esc(`${o.store}|${o.url}`)}"><a class="b-rl" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}" title="${esc(o.coupon ? `Abrir en ${nm} y copiar el cupón ${o.coupon}` : `Abrir en ${nm}`)}">
+      ${logo(o.store, nm)}<span class="nm"><b>${nm}</b>${who}</span>${fitCell(o, gift)}
       ${priced(o, c, s, 'tot')}${both ? `<span class="rd">${localNum(o.totalUSD, c, s)}</span>` : ''}<span class="ir">${ARROW}</span></a><button type="button" class="b-mn" data-a="menu" data-store="${o.store}"${seller ? ` data-seller="${esc(seller)}"` : ''} aria-label="Más opciones de ${nm}" title="Ocultar esta tienda o este vendedor">…</button></div>`;
   };
   const sub = (g: StoreGroup) => !g.rest.length ? '' : `<div class="b-sub" data-k="sub|${g.store}"><span>+${g.rest.length} de ${STORES[g.store].name}</span>${g.rest.map((o) =>
     ` · <a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}">${kindShort(o)} ${esc(regionShort(o))} ${money(o.totalUSD, c, s)}</a>`).join('')}</div>`;
-  const waits = pendingOf(c, s).map((id) => `<div class="b-row wait" data-k="wait|${id}" aria-hidden="true">${logo(id, STORES[id].name)}<span class="nm"><b>${STORES[id].name}</b><span>Buscando…</span></span><span class="ty"></span><span class="barw"></span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`);
+  const waits = pendingOf(c, s).map((id) => `<div class="b-row wait" data-k="wait|${id}" aria-hidden="true">${logo(id, STORES[id].name)}<span class="nm"><b>${STORES[id].name}</b><span>Buscando…</span></span><span class="rg"></span><span class="barw"></span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`);
   let fold = '';
   if (no.length) {
     const regions = [...new Set(no.flatMap((o) => o.regions.map(prettyRegion)))];
     fold = `<button type="button" class="b-fold" data-a="no" aria-expanded="${st.showNo}" data-k="fold"><span class="nx">${no.length} ${no.length === 1 ? 'oferta no activa' : 'ofertas no activan'} en RD</span><span class="mute">${esc(andList(regions.slice(0, 3)))}${regions.length > 3 ? ' y otras' : ''} · desde ${money(no[0].totalUSD, c, s)}</span><span class="chev">${st.showNo ? 'Ocultar ▴' : 'Mostrar ▸'}</span></button>`;
-    if (st.showNo) fold += no.map((o) => `<div class="b-row no" data-k="no|${esc(o.url)}">${logo(o.store, STORES[o.store].name)}<span class="nm"><b>${STORES[o.store].name}</b><span class="chip no" data-tip="${esc(o.fitWhy)}" tabindex="0">${esc(o.fitText)}</span></span><span class="ty">${kindShort(o)} · ${esc(regionShort(o))}</span><span class="tot"><s>${money(o.totalUSD, c, s)}</s></span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`).join('');
+    if (st.showNo) fold += no.map((o) => `<div class="b-row no" data-k="no|${esc(o.url)}">${logo(o.store, STORES[o.store].name)}<span class="nm"><b>${STORES[o.store].name}</b><span>${STORES[o.store].marketplace ? 'Vende un tercero' : 'Vende la tienda'}</span></span><span class="rg" title="${esc(o.fitWhy)}"><em class="n">No activa en RD</em><small>${esc(regionLine(o))}</small></span><span class="tot"><s>${money(o.totalUSD, c, s)}</s></span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`).join('');
   }
-  const head = `<div class="b-row th" data-k="th"><span></span><span>Tienda</span><span class="ty">Tipo</span><span class="r">Pagas</span>${both ? '<span class="r rd">RD$</span>' : ''}<span></span><span></span></div>`;
-  const body = groups.map((g) => row(g.top) + sub(g)).join('') + waits.join('') + fold;
-  return head + (body || '<p class="b-empty">Ninguna tienda tiene este juego.</p>');
+  const head = `<div class="b-row th" data-k="th"><span></span><span>Tienda</span><span class="rg">${gift ? 'Para quién' : '¿Activa en RD?'}</span><span class="r">Pagas</span>${both ? '<span class="r rd">RD$</span>' : ''}<span></span><span></span></div>`;
+  // 1.8 (11): una tienda que no respondió o que no pudimos leer hoy no es una tienda «sin el juego».
+  const shownIds = new Set(groups.map((g) => g.store));
+  const gone = [...new Set([...c.failed, ...(c.down ?? [])])].filter((id) => !shownIds.has(id) && !(c.pending ?? []).includes(id) && (s.marketplaces || !STORES[id].marketplace) && !s.hiddenStores?.includes(id))
+    .map((id) => `<div class="b-row gone" data-k="gone|${id}">${logo(id, STORES[id].name)}<span class="nm"><b>${STORES[id].name}</b><span>${c.failed.includes(id) ? 'No respondió ahora' : 'No la pudimos leer hoy'}</span></span><span class="rg"><em class="m">Sin datos</em><small>Puede que sí lo tenga</small></span><span class="tot">—</span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`);
+  const body = groups.map((g) => row(g.top) + sub(g)).join('') + waits.join('') + gone.join('') + fold;
+  const note = gift && groups.length ? '<p class="b-gift" data-k="gift">Una clave se regala mandando el código; el regalo de Steam, desde la tienda.</p>' : '';
+  return head + (body ? body + note : '<p class="b-empty">Ninguna tienda tiene este juego.</p>');
 }
 
 /** 6: gráfico del historial con Steam, la mejor oferta y el mínimo histórico. */

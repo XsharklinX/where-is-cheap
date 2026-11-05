@@ -16,6 +16,19 @@ export const FEES: FeeTable = {
 
 export const round2 = (n: number) => Math.round(n * 100) / 100;
 
+/** 1.8 (6): cómo pagas en cada tienda; la que no tiene la suya usa la forma de pago general. */
+export type PayBy = Partial<Record<StoreId, Pay>>;
+export interface PayPrefs { pay: Pay; payBy?: PayBy }
+export const payFor = (p: PayPrefs, store: StoreId): Pay => p.payBy?.[store] ?? p.pay;
+/** ¿Pagas distinto en unas tiendas que en otras? */
+export const payMixed = (p: PayPrefs): boolean => new Set((Object.keys(FEES) as StoreId[]).map((id) => payFor(p, id))).size > 1;
+/** Quita las tiendas que pagan igual que la forma general (para no guardar ruido). */
+export function cleanPayBy(p: PayPrefs): PayBy {
+  const out: PayBy = {};
+  for (const id of Object.keys(FEES) as StoreId[]) if (p.payBy?.[id] && p.payBy[id] !== p.pay) out[id] = p.payBy[id];
+  return out;
+}
+
 export function feeFor(store: StoreId, pay: Pay, priceUSD: number, table: FeeTable = FEES): number {
   const f = table[store][pay];
   return round2((priceUSD * f.pct) / 100 + f.fixed);
@@ -54,7 +67,8 @@ export function fitFee(samples: FeeSample[], est: Fee): Fee {
 }
 
 /** Tabla de comisiones con lo aprendido encima de lo estimado, y desde cuándo está comprobada cada tienda. */
-export function mergeFees(learned: Learned, pay: Pay): { table: FeeTable; checked: Partial<Record<StoreId, number>> } {
+export function mergeFees(learned: Learned, pay: Pay | PayPrefs): { table: FeeTable; checked: Partial<Record<StoreId, number>> } {
+  const prefs: PayPrefs = typeof pay === 'string' ? { pay } : pay;
   const table = structuredClone(FEES);
   const checked: Partial<Record<StoreId, number>> = {};
   for (const store of Object.keys(FEES) as StoreId[]) {
@@ -63,7 +77,7 @@ export function mergeFees(learned: Learned, pay: Pay): { table: FeeTable; checke
       if (!s?.length) continue;
       table[store][p] = fitFee(s, FEES[store][p]);
       // Comprobada con la forma de pago que usas ahora; se muestra la compra más reciente.
-      if (p === pay) checked[store] = Math.max(...s.map((x) => x.at));
+      if (p === payFor(prefs, store)) checked[store] = Math.max(...s.map((x) => x.at));
     }
   }
   return { table, checked };

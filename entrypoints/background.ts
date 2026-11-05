@@ -1,5 +1,6 @@
-import { gather, planCart, rank, savings, type CartItem } from '@/lib/compare';
-import { autoBoughtIds, getCoupons, getHistory, getLearned, getLedger, getNames, getSteamStatus, getUser, getWish, setHistory, setLearned, setLedger, setNames, setSteamStatus, setUser, setWish, type LedgerEntry, type SteamStatus, type SteamUser, type WishItem } from '@/lib/data';
+import { gather, planCart, rank, savings, type CartItem, type Searcher } from '@/lib/compare';
+import { errReport, errText, pageKey, PROBES, pushErr, SEEN_TTL, storeDown, withSeen, type ErrEntry, type Expect, type HealthMap, type Seen } from '@/lib/health';
+import { autoBoughtIds, keyToRemind, getCoupons, getHistory, getLearned, getLedger, getNames, getSteamStatus, getUser, getWish, setHistory, setLearned, setLedger, setNames, setSteamStatus, setUser, setWish, type LedgerEntry, type SteamStatus, type SteamUser, type WishItem } from '@/lib/data';
 import { mergeFees, plausible, round2 } from '@/lib/fees';
 import { addPoint, nextSale, verdict } from '@/lib/history';
 import { getLow, toLow, waitWorth } from '@/lib/low';
@@ -20,7 +21,88 @@ import { STORE_IDS, STORES } from '@/lib/types';
 const TTL = 30 * 60 * 1000;
 type Cached = { game: Game; raw: RawOffer[]; failed: StoreId[]; at: number; staleAt?: number };
 type Part = Cached & { pending: StoreId[] };
-const SEARCHERS = { ig: searchIG, eneba: (q: string) => searchEneba(q), driffle: (q: string) => searchDriffle(q), kinguin: searchKinguin };
+const RAW_SEARCHERS: Record<StoreId, Searcher> = { ig: searchIG, eneba: (q: string) => searchEneba(q), driffle: (q: string) => searchDriffle(q), kinguin: searchKinguin };
+
+/* ---------- 1.8 (13): registro de fallos ---------- */
+
+let errQ: Promise<unknown> = Promise.resolve();
+/** Guarda un fallo en el anillo de 20, de uno en uno para no pisar escrituras. */
+function logErr(e: ErrEntry) {
+  errQ = errQ.then(async () => {
+    const { errLog = [] } = await browser.storage.local.get('errLog') as { errLog?: ErrEntry[] };
+    await browser.storage.local.set({ errLog: pushErr(errLog, e) });
+  }).catch(() => {});
+}
+/** Cada buscador apunta en el registro lo que le falla, y el fallo sigue su camino. */
+const SEARCHERS = Object.fromEntries(STORE_IDS.map((id) => [id, (async (q, c) => {
+  try { return await RAW_SEARCHERS[id](q, c); } catch (e) { logErr({ at: Date.now(), store: id, game: q.slice(0, 80), what: errText(e) }); throw e; }
+}) satisfies Searcher])) as Record<StoreId, Searcher>;
+
+/* ---------- 1.8 (12): precio al llegar a la tienda ---------- */
+
+type ArriveMap = Record<string, Expect>;
+type SeenMap = Record<string, Seen>;
+const getSeen = async () => ((await browser.storage.local.get('seenPrices')).seenPrices ?? {}) as SeenMap;
+
+/** Las escrituras de arrive y seenPrices, de una en una (leer, cambiar y guardar el mapa entero). */
+let mapQ: Promise<unknown> = Promise.resolve();
+const queued = <T>(f: () => Promise<T>): Promise<T> => { const r = mapQ.then(f); mapQ = r.catch(() => {}); return r; };
+
+/** Al pulsar «Ir»: guarda lo que esperamos ver allí (30 min). */
+const expectArrival = (e: Omit<Expect, 'at'>) => queued(async () => {
+  const now = Date.now();
+  const { arrive = {} } = await browser.storage.local.get('arrive') as { arrive?: ArriveMap };
+  for (const k of Object.keys(arrive)) if (now - arrive[k].at > 30 * 60_000) delete arrive[k];
+  arrive[pageKey(e.url)] = { ...e, at: now };
+  await browser.storage.local.set({ arrive });
+});
+
+/** La página de una tienda pregunta si venimos de «Ir». Solo la misma página: si la tienda redirige, no se compara
+ *  (mejor perder una comprobación que guardar el precio de otro juego o edición). */
+async function arrivedAt(url: string): Promise<Expect | null> {
+  const { arrive = {} } = await browser.storage.local.get('arrive') as { arrive?: ArriveMap };
+  const hit = arrive[pageKey(url)];
+  return hit && Date.now() - hit.at < 30 * 60_000 ? hit : null;
+}
+
+/** Lo visto en la página corrige esa oferta durante 24 h. */
+const sawPrice = (url: string, price: number, currency: 'USD' | 'EUR') => queued(async () => {
+  const exp = await arrivedAt(url);
+  if (!exp || exp.currency !== currency) return;
+  const now = Date.now();
+  const seen = await getSeen();
+  for (const k of Object.keys(seen)) if (now - seen[k].at > SEEN_TTL) delete seen[k];
+  seen[pageKey(url)] = { price, currency, at: now, from: exp.price };
+  await browser.storage.local.set({ seenPrices: seen });
+});
+
+
+/* ---------- 1.8 (11): revisión diaria de las tiendas ---------- */
+
+const getHealth = async () => ((await browser.storage.local.get('storeHealth')).storeHealth ?? {}) as HealthMap;
+
+/** Busca el mismo juego en cada tienda y apunta si respondió y si leyó al menos una oferta. */
+async function checkHealth(): Promise<HealthMap> {
+  const s = await getSettings();
+  const out: HealthMap = {};
+  await Promise.all(STORE_IDS.map(async (id) => {
+    const t0 = Date.now();
+    try {
+      let n = 0;
+      for (const name of PROBES) {
+        const raw = await SEARCHERS[id](name, s.country);
+        n = raw.filter((o) => sameGame(name, o.title)).length;
+        if (n) break;
+      }
+      out[id] = { ok: n > 0, at: Date.now(), ms: Date.now() - t0, n, why: n > 0 ? '' : 'respondió pero no leímos ninguna oferta (¿cambió su página?)' };
+      if (!n) logErr({ at: Date.now(), store: id, game: PROBES.join(' / '), what: 'Revisión diaria: 0 ofertas leídas' });
+    } catch (e) {
+      out[id] = { ok: false, at: Date.now(), ms: Date.now() - t0, n: 0, why: errText(e) };
+    }
+  }));
+  await browser.storage.local.set({ storeHealth: out });
+  return out;
+}
 
 /* ---------- Steam ---------- */
 
@@ -185,16 +267,19 @@ const within = <T,>(p: Promise<T>, ms: number, def: T) => Promise.race([p, new P
 
 async function compareApp(appid: number, fresh: boolean, opts: { edition?: Edition; onPart?: (c: Compare) => void } = {}): Promise<Compare> {
   const ed = opts.edition;
-  const [s, rates0, coupons, user, learned, hist0] = await Promise.all([getSettings(), getRates(), getCoupons(), getUser(), getLearned(), getHistory(appid)]);
+  const [s, rates0, coupons, user, learned, hist0, health, seen] = await Promise.all([getSettings(), getRates(), getCoupons(), getUser(), getLearned(), getHistory(appid), getHealth(), getSeen()]);
   const rates = withFx(rates0, s.fxPct);
-  const { table, checked } = mergeFees(learned, s.pay);
+  const { table, checked } = mergeFees(learned, s);
   // 2: el mínimo histórico se pide a la vez que las tiendas y no las retrasa más de 3 s.
   const lowP = ed ? Promise.resolve(null) : getLow(appid).catch(() => null);
-  const owned = user.owned.includes(appid);
+  // Otra edición no es lo que tienes: con la estándar en la biblioteca, la Deluxe sigue siendo una compra.
+  const owned = !ed && user.owned.includes(appid);
   const build = (c: Cached, pending: StoreId[], history = hist0, v: Verdict = { kind: 'none', title: '', detail: '' }, low: HistLow | null = null): Compare => ({
     game: c.game,
-    offers: rank(c.game, c.raw, rates, s, coupons, table).map((o) => (c.game.twin && o.fit === 'ok' ? { ...o, fit: 'warn' as const, fitText: TWIN_TEXT, fitWhy: TWIN_WHY } : o)),
-    failed: c.failed, rates, pay: s.pay, at: c.at, history,
+    offers: rank(c.game, withSeen(c.raw, seen), rates, s, coupons, table).map((o) => (c.game.twin && o.fit === 'ok' ? { ...o, fit: 'warn' as const, fitText: TWIN_TEXT, fitWhy: TWIN_WHY } : o)),
+    failed: c.failed, rates, pay: s.pay, payBy: s.payBy, at: c.at, history,
+    // 11: tiendas que la revisión diaria vio mal y que hoy no han dado nada: «no la pudimos leer», no «no está».
+    down: STORE_IDS.filter((id) => storeDown(health, id) && !c.raw.some((o) => o.store === id && sameGame(c.game.name, o.title)) && !pending.includes(id)),
     verdict: v, owned,
     ownsBase: c.game.isDlc && c.game.baseAppid && user.at ? user.owned.includes(c.game.baseAppid) : null,
     pending, low, feesChecked: checked, edition: ed?.label,
@@ -464,6 +549,8 @@ async function openNotification(nid: string) {
     const list = ((await browser.storage.session.get('freeGames')).freeGames ?? []) as FreeGame[];
     const wish = list.filter((g) => g.inWishlist);
     for (const g of (wish.length ? wish : list).slice(0, 3)) await browser.tabs.create({ url: g.url });
+  } else if (nid.startsWith('key:')) {
+    await browser.tabs.create({ url: 'https://store.steampowered.com/account/registerkey' });
   } else if (nid.startsWith('refund:')) {
     await browser.tabs.create({ url: 'https://help.steampowered.com/es/wizard/HelpWithPurchase' });
   } else if (nid === 'sale') {
@@ -642,6 +729,27 @@ async function steamSessionQ(): Promise<string | null> {
  * lee con la sesión de store.steampowered.com y las horas, de IPlayerService/GetOwnedGames. No avisa dos veces de la
  * misma compra. Si Steam cambia su maqueta o no hay sesión, no hace nada.
  */
+async function checkKeys() {
+  if (muted(await getSettings())) return;
+  const st = await syncSteam(false).catch(() => null);
+  const user = await getUser();
+  // Sin la biblioteca leída hoy no se puede saber si la activaste: mejor callar.
+  if (st?.status !== 'ok' || !user.owned.length || Date.now() - user.at > 24 * HOUR) return;
+  const l = await getLedger();
+  const e = keyToRemind(l, user.owned);
+  if (!e) return;
+  e.keyAsked = Date.now();
+  await setLedger(l);
+  const days = Math.floor((Date.now() - e.at) / 86_400_000);
+  await notifyImg(`key:${e.id}`, e.appid, {
+    type: 'basic',
+    iconUrl: browser.runtime.getURL('/icon/128.png'),
+    title: `¿Activaste la clave de ${e.name}?`,
+    message: `${e.state === 'bought' ? 'La compraste en' : 'Fuiste a'} ${STORES[e.store].name} hace ${days} días y aún no está en tu biblioteca. Las claves sin activar se pueden perder o caducar.`,
+    buttons: [{ title: 'Activar en Steam' }, { title: 'Ya lo hice' }],
+  });
+}
+
 async function checkRefunds() {
   if (muted(await getSettings())) return;
   const st = await syncSteam(false);
@@ -833,14 +941,30 @@ async function handle(msg: any, sender: any): Promise<unknown> {
     }
     case 'badgeFor': return badgeFor(Number(msg.appid));
     case 'getTarget': return (await getWish())[msg.appid]?.target ?? null;
+    // 1.8 (8): los avisos puestos, para la campana de la lista de deseos de Steam.
+    case 'targets': return Object.fromEntries(Object.values(await getWish()).filter((w) => w.target != null).map((w) => [w.appid, w.target!]));
     case 'checkWishlist': await checkWishlist(msg.all ? 500 : Number(msg.limit) || 12); return true;
-    case 'click': await logClick(msg.entry); return true;
+    case 'click':
+      // Primero lo esperado: la pestaña de la tienda puede preguntar antes de que termine lo demás.
+      if (msg.expect?.url && msg.expect.price > 0) await expectArrival(msg.expect);
+      await logClick(msg.entry);
+      return true;
+    case 'arrived': return arrivedAt(String(msg.url));
+    case 'seen':
+      if (Number(msg.price) > 0 && (msg.currency === 'USD' || msg.currency === 'EUR')) await sawPrice(String(msg.url), Number(msg.price), msg.currency);
+      return true;
     case 'ledger': return getLedger();
     case 'ledgerSet': return confirmPurchase(String(msg.id), msg.state, msg.paid == null ? undefined : Number(msg.paid), msg.currency === 'EUR' ? 'EUR' : 'USD');
+    case 'health': {
+      const { errLog = [] } = await browser.storage.local.get('errLog') as { errLog?: ErrEntry[] };
+      const health = msg.run ? await checkHealth() : await getHealth();
+      return { health, errLog, report: errReport(errLog, health, { version: browser.runtime.getManifest().version, ua: String(msg.ua ?? navigator.userAgent) }) };
+    }
+    case 'errClear': await browser.storage.local.set({ errLog: [] }); return true;
     case 'fees': {
       const s = await getSettings();
       const learned = await getLearned();
-      return { ...mergeFees(learned, s.pay), learned, pay: s.pay };
+      return { ...mergeFees(learned, s), learned, pay: s.pay, payBy: s.payBy ?? {} };
     }
     case 'feesReset': {
       const learned = await getLearned();
@@ -850,7 +974,7 @@ async function handle(msg: any, sender: any): Promise<unknown> {
     }
     case 'cart': {
       const s = await getSettings();
-      const { table } = mergeFees(await getLearned(), s.pay);
+      const { table } = mergeFees(await getLearned(), s);
       const items: CartItem[] = [];
       for (const appid of (msg.appids as number[]).slice(0, 8)) {
         try {
@@ -858,7 +982,7 @@ async function handle(msg: any, sender: any): Promise<unknown> {
           items.push({ appid, name: c.game.name, steamUSD: c.game.steamUSD, offers: c.offers });
         } catch { /* juego que Steam no devuelve: se salta */ }
       }
-      return { plan: planCart(items, s.pay, table), rates: withFx(await getRates(), s.fxPct), omitted: Math.max(0, (msg.appids as number[]).length - 8) };
+      return { plan: planCart(items, s, table), rates: withFx(await getRates(), s.fxPct), omitted: Math.max(0, (msg.appids as number[]).length - 8) };
     }
     case 'bundle': return bundle((msg.appids as number[]).map(Number).filter(Boolean));
     case 'syncDetection': await syncDetection(); return true;
@@ -892,6 +1016,7 @@ export default defineBackground(() => {
         if (!m.edition) await setBadge(port.sender?.tab?.id, c).catch(() => {});
       } catch (e: any) {
         send({ type: 'error', error: String(e?.message ?? e) });
+        logErr({ at: Date.now(), store: 'steam', game: `appid ${Number(m.appid)}`, what: errText(e) });
       }
     });
   });
@@ -904,6 +1029,8 @@ export default defineBackground(() => {
       if (!(await browser.alarms.get('sale'))) browser.alarms.create('sale', { periodInMinutes: 720, delayInMinutes: 10 });
       if (!(await browser.alarms.get('refund'))) browser.alarms.create('refund', { periodInMinutes: 1440, delayInMinutes: 20 });
       if (!(await browser.alarms.get('free'))) browser.alarms.create('free', { periodInMinutes: 720, delayInMinutes: 15 });
+      if (!(await browser.alarms.get('keys'))) browser.alarms.create('keys', { periodInMinutes: 1440, delayInMinutes: 30 });
+      if (!(await browser.alarms.get('health'))) browser.alarms.create('health', { periodInMinutes: 1440, delayInMinutes: 3 });
     })();
     void syncDetection();
   });
@@ -944,9 +1071,13 @@ export default defineBackground(() => {
     if (a.name === 'sale') void checkSale();
     if (a.name === 'refund') void checkRefunds();
     if (a.name === 'free') void checkFree();
+    if (a.name === 'health') void checkHealth().catch(() => {});
+    if (a.name === 'keys') void checkKeys().catch(() => {});
   });
   browser.notifications.onClicked.addListener((id) => void openNotification(id));
   browser.notifications.onButtonClicked.addListener((id, i) => {
+    // 1.8 (9): «Activar en Steam» / «Ya lo hice». Ya no se vuelve a avisar de esa entrada (keyAsked).
+    if (id.startsWith('key:')) { if (i === 0) void openNotification(id); else void browser.notifications.clear(id); return; }
     // El segundo botón de todos los avisos es «Silenciar 1 día».
     if (i === 1) void saveSettings({ mutedUntil: Date.now() + 24 * HOUR }).then(() => browser.notifications.clear(id));
     else void openNotification(id);

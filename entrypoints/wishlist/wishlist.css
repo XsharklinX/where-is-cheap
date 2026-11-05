@@ -73,7 +73,7 @@ html, body { margin: 0; background: #121014; min-height: 100%; }
 .wl-table .tr:last-child { border-bottom: 0; }
 .wl-table .tr:not(.th):hover { background: #1b171e; }
 .wl-table .tr.hit { box-shadow: inset 3px 0 0 var(--save); }
-.wl-table .th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #7d757e; padding-top: 10px; padding-bottom: 8px; }
+.wl-table .th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #958d96; padding-top: 10px; padding-bottom: 8px; }
 .wl-table .cv img { display: block; width: 92px; height: 43px; object-fit: cover; border-radius: 4px; background: #221e26; }
 .wl-table .nm { display: grid; min-width: 0; gap: 2px; }
 .wl-table .nm b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -1,4 +1,6 @@
 import { activationURL, findKeys } from '@/lib/activate';
+import { call } from '@/lib/api';
+import { priceOff, readPagePrice, type Expect } from '@/lib/health';
 import { esc } from '@/lib/ui';
 
 // 5 (fase D): en las páginas de pedido de Eneba, Kinguin, Driffle e Instant Gaming detecta la clave de Steam que
@@ -56,6 +58,36 @@ export default defineContentScript({
     }
 
     void scan();
+    void checkPrice();
+
+    /* 1.8 (12): si llegaste desde «Ir», comprobar que el precio de la página es el que dijimos. Si no se puede leer, nada. */
+    async function checkPrice() {
+      const exp = await call<Expect | null>('arrived', { url: location.href }).catch(() => null);
+      if (!exp) return;
+      let seen: { price: number; currency: string } | null = null;
+      for (let i = 0; i < 12 && !seen; i++) {
+        seen = readPagePrice(document);
+        if (!seen) await new Promise((r) => setTimeout(r, 800));
+      }
+      if (!seen || seen.currency !== exp.currency || !priceOff(exp.price, seen.price)) return;
+      void call('seen', { url: exp.url, price: seen.price, currency: seen.currency }).catch(() => {});
+      const sym = exp.currency === 'EUR' ? '€' : '$';
+      const m = (n: number) => `${sym}${n.toFixed(2)}`;
+      const up = seen.price > exp.price;
+      const bar = document.createElement('where-is-cheap-price');
+      const sh = bar.attachShadow({ mode: 'open' });
+      sh.innerHTML = `<style>
+        :host{all:initial}
+        .b{position:fixed;left:18px;bottom:18px;z-index:2147483000;max-width:440px;display:flex;gap:10px;align-items:flex-start;background:#17141a;color:#f3eee8;border:1px solid #2c2730;box-shadow:inset 3px 0 0 #ffb547,0 10px 28px rgba(0,0,0,.45);border-radius:10px;padding:11px 12px 11px 15px;font:13px/1.45 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif}
+        b{color:#ffb547} .up{color:#ffd166} .dn{color:#45d69b}
+        small{display:block;color:#a69ea6;font-size:12px;margin-top:2px}
+        button{flex:none;background:none;border:0;color:#a69ea6;font-size:18px;line-height:1;cursor:pointer;padding:0 2px}
+        button:hover{color:#fff}
+      </style><div class="b" role="status"><svg width="14" height="14" viewBox="0 0 34 34" aria-hidden="true" style="flex:none;margin-top:3px"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/></svg><div>Aquí sale a <b class="${up ? 'up' : 'dn'}">${m(seen.price)}</b>, no a ${m(exp.price)} como vimos al buscar${up ? '' : ': mejor para ti'}.<small>Antes de la comisión y del cupón. La próxima vez que compares ${esc(exp.name)} usaremos este precio.</small></div><button type="button" aria-label="Cerrar">×</button></div>`;
+      sh.querySelector('button')!.addEventListener('click', () => bar.remove());
+      document.documentElement.append(bar);
+    }
+
     // Las claves se revelan al pulsar «Ver clave» o al cargar la biblioteca: se vuelve a mirar cuando cambia la página.
     let t = 0;
     const mo = new MutationObserver(() => { clearTimeout(t); t = window.setTimeout(scan, 500); });

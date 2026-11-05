@@ -1,4 +1,4 @@
-import { feeFor, FEES, round2, type FeeTable } from './fees';
+import { feeFor, FEES, payFor, round2, type FeeTable, type PayPrefs } from './fees';
 import { sameGame } from './match';
 import { regionFit } from './region';
 import type { Compare, Coupon, Game, Offer, Pay, Rates, RawOffer, Settings, StoreId } from './types';
@@ -17,7 +17,7 @@ export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, cou
       const cp = bestCoupon(coupons, o.store, now);
       const couponUSD = cp ? round2((priceUSD * cp.pct) / 100) : 0;
       const net = round2(priceUSD - couponUSD);
-      const feeUSD = feeFor(o.store, s.pay, net, fees);
+      const feeUSD = feeFor(o.store, payFor(s, o.store), net, fees);
       const { fit, text, why } = regionFit(o);
       return { ...o, priceUSD, couponUSD, coupon: cp?.code, feeUSD, totalUSD: round2(net + feeUSD), fit, fitText: text, fitWhy: why };
     });
@@ -97,7 +97,8 @@ export interface CartPlan {
 }
 
 /** Elige tienda por juego para que el total sea mínimo, contando que la parte fija de la comisión se paga una vez por pedido. */
-export function planCart(items: CartItem[], pay: Pay, fees: FeeTable = FEES): CartPlan {
+export function planCart(items: CartItem[], pay: Pay | PayPrefs, fees: FeeTable = FEES): CartPlan {
+  const prefs: PayPrefs = typeof pay === 'string' ? { pay } : pay;
   type Opt = { store: StoreId | 'steam'; net: number; url: string };
   const opts: Opt[][] = items.map((it) => {
     const o: Opt[] = [];
@@ -117,7 +118,7 @@ export function planCart(items: CartItem[], pay: Pay, fees: FeeTable = FEES): Ca
     let t = 0;
     for (const [st, sub] of per) {
       if (st === 'steam') { t += sub; continue; }
-      const f = fees[st as StoreId][pay];
+      const f = fees[st as StoreId][payFor(prefs, st as StoreId)];
       t += sub + (sub * f.pct) / 100 + f.fixed;
     }
     return round2(t);

@@ -1,4 +1,5 @@
 import { savings } from './compare';
+import { payFor, payMixed } from './fees';
 import { kindLabel, prettyRegion } from './region';
 import type { Compare, Edition, HistoryPoint, Offer, Settings, StoreId } from './types';
 import { CURRENCIES, STORES } from './types';
@@ -173,7 +174,10 @@ export function sparkHTML(h: HistoryPoint[], lowUSD: number | null = null, w = 3
 }
 
 export function footHTML(c: Compare, s: Settings): string {
-  const pay = s.pay === 'card' ? 'tarjeta' : 'PayPal';
+  // 1.8 (6): si pagas distinto según la tienda, se dice dónde va lo que no es lo general.
+  const name = (p: string) => (p === 'card' ? 'tarjeta' : 'PayPal');
+  const odd = (Object.keys(STORES) as StoreId[]).filter((id) => payFor(s, id) !== s.pay);
+  const pay = payMixed(s) ? `${name(s.pay)} (${name(s.pay === 'card' ? 'paypal' : 'card')} en ${andList(odd.map((id) => STORES[id].name))})` : name(s.pay);
   const fails = failedNote(c);
   const rate = c.rates.fallback ? ' · tasa sin actualizar' : '';
   // 3: qué comisiones siguen estimadas, solo de las tiendas que salen en la lista.

@@ -7,6 +7,7 @@ import { cartAppids } from '@/lib/steamUser';
 import type { Rates } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { esc, logo, money, TAG_SVG } from '@/lib/ui';
+import { claimPage } from '@/lib/claim';
 
 // F: en el carrito de Steam, reparte los juegos entre tiendas para pagar lo mínimo.
 // 1.7 (7): dentro de la columna del total de Steam, debajo del botón de pagar. Si Steam cambia la página y no se
@@ -25,6 +26,7 @@ export default defineContentScript({
   matches: ['https://store.steampowered.com/cart*'],
   cssInjectionMode: 'ui',
   async main(ctx) {
+    if (!claimPage(ctx, 'cart')) return;
     let ids: number[] = [];
     for (let i = 0; i < 10 && !ids.length; i++) {
       ids = await cartAppids();

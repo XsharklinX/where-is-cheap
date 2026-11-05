@@ -52,6 +52,13 @@
             <button type="button" role="radio" data-v="card">Tarjeta</button>
             <button type="button" role="radio" data-v="paypal">PayPal</button>
           </div>
+          <small class="hint">Si en alguna tienda pagas distinto, cámbialo en <a href="#comisiones">Comisiones</a>.</small>
+          <span class="lbl" id="box-l">En la ficha de Steam</span>
+          <div class="seg" role="radiogroup" aria-labelledby="box-l" data-k="boxMode">
+            <button type="button" role="radio" data-v="full">Caja completa</button>
+            <button type="button" role="radio" data-v="line">Solo una línea</button>
+          </div>
+          <small class="hint">Con «Solo una línea», «Ver ofertas» abre la caja completa en esa visita.</small>
           <div class="sw"><span><label for="marketplaces">Incluir marketplaces</label><small>Eneba, Driffle y Kinguin: suelen ser más baratos; venden terceros.</small></span><input type="checkbox" id="marketplaces" role="switch"></div>
           <div class="sw"><span><label for="accounts">Mostrar cuentas de Steam</label><small>No son claves: te dan una cuenta con el juego. Nunca salen como mejor precio.</small></span><input type="checkbox" id="accounts" role="switch"></div>
         </div>
@@ -125,6 +132,20 @@
             <p class="txt" id="hiddenNone">Nada. Desde el menú «…» de cada oferta puedes ocultar una tienda o un vendedor de Kinguin.</p>
             <div id="hiddenList" class="clist"></div>
           </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="ic" data-ic="store"></span> Estado de las tiendas</div>
+          <p class="card-desc">Una vez al día buscamos un juego conocido en cada tienda. Si una no responde o cambió su página, la caja lo dice en vez de darla por «sin el juego».</p>
+          <div id="health" class="clist"></div>
+          <div class="hrow"><button type="button" id="healthRun" class="go ghost">Revisar ahora</button></div>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><span class="ic" data-ic="bell"></span> Si algo falla</div>
+          <p class="card-desc">Guardamos los últimos 20 fallos: qué tienda, con qué juego y qué pasó. Nada de tu cuenta, tu lista ni tus compras.</p>
+          <div id="errLog" class="errlog"></div>
+          <div class="hrow"><button type="button" id="errCopy" class="go">Copiar informe</button><button type="button" id="errClear" class="go ghost">Borrar</button></div>
         </div>
       </section>
 

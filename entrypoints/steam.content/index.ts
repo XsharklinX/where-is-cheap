@@ -12,6 +12,7 @@ import { sessionFromDom } from '@/lib/steamUser';
 import type { Compare, Edition, Settings } from '@/lib/types';
 import { STORES } from '@/lib/types';
 import { norm } from '@/lib/match';
+import { claimPage } from '@/lib/claim';
 
 const TAG_INLINE = '<svg width="12" height="12" viewBox="0 0 34 34" aria-hidden="true" style="vertical-align:-1px;margin-right:5px"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#1b2838"/></svg>';
 const usd = (n: number) => `$${n.toFixed(2)}`;
@@ -21,6 +22,7 @@ export default defineContentScript({
   matches: ['https://store.steampowered.com/app/*'],
   cssInjectionMode: 'ui',
   async main(ctx) {
+    if (!claimPage(ctx, 'app')) return;
     const appid = appidFromUrl(location.href);
     if (!appid) return;
     // Q y E: que el background lea tu lista y tu biblioteca antes de comparar (comparte la lectura con user.content).
@@ -59,7 +61,9 @@ export default defineContentScript({
       },
     });
     ui.mount();
-    host = document.querySelector('where-is-cheap');
+    host = ui.shadowHost;
+    // La caja la quita WXT al recargar la extensión; la fila de la derecha y las tiras son nuestras.
+    ctx.onInvalidated(() => document.querySelectorAll('.wic-glance, .wic-strip').forEach((el) => el.remove()));
 
     async function load(fresh: boolean) {
       const my = ++run;
@@ -125,9 +129,16 @@ export default defineContentScript({
         if (!el) continue;
         const strip = document.createElement('div');
         strip.className = 'wic-strip';
-        strip.style.cssText = 'margin:-30px 0 30px;padding:24px 16px 8px 14px;background:rgba(0,0,0,.35);border-radius:0 0 4px 4px;box-shadow:inset 3px 0 0 #ffb547;font-size:12.5px;color:#c6d4df;display:flex;align-items:center;gap:6px;flex-wrap:wrap;position:relative;z-index:0';
+        // 1.8: antes se metía bajo la caja con margen negativo y los botones de Steam (que cuelgan 17 px) la tapaban.
+        // Ahora va justo debajo de esos botones, como una línea aparte.
+        strip.style.cssText = 'margin:0 0 20px;padding:8px 14px;background:rgba(0,0,0,.22);border-radius:3px;box-shadow:inset 3px 0 0 #ffb547;font:12.5px "Motiva Sans",Arial,sans-serif;color:#c6d4df;display:flex;align-items:center;gap:6px;flex-wrap:wrap';
         strip.innerHTML = `${TAG_INLINE}<span style="color:#8f98a0">Fuera de Steam: buscando…</span>`;
         (el.closest('.game_area_purchase_game_wrapper') ?? el).after(strip);
+        const act = el.querySelector('.game_purchase_action');
+        if (act) {
+          const gap = strip.getBoundingClientRect().top - act.getBoundingClientRect().bottom;
+          if (gap > 8) strip.style.marginTop = `${Math.round(8 - gap)}px`;
+        }
         try {
           const c = await streamCompare(appid!, false, () => {}, e);
           const top = c.offers.find((o) => o.fit === 'ok');
@@ -135,7 +146,8 @@ export default defineContentScript({
           if (!top) strip.innerHTML = `${TAG_INLINE}<span style="color:#8f98a0">Fuera de Steam no hay ofertas de esta edición que activen en RD.</span>`;
           else if (steam != null && steam <= top.totalUSD) strip.innerHTML = `${TAG_INLINE}<span>Steam es lo más barato para esta edición. Fuera, desde ${usd(top.totalUSD)} en ${STORES[top.store].name}.</span>`;
           else {
-            strip.innerHTML = `${TAG_INLINE}<span>Fuera de Steam: <b style="font-family:ui-monospace,Consolas,monospace;color:#ffb547">${usd(top.totalUSD)}</b> en ${STORES[top.store].name}</span><span style="color:#8f98a0">· activa en RD${steam ? ` · ahorras ${usd(steam - top.totalUSD)}` : ''}</span><a href="#" data-ed="${escT(e.label)}" style="color:#67c1f5;margin-left:6px">Ver ofertas ▸</a>`;
+            offerUpsell(e, top.totalUSD);
+            strip.innerHTML = `${TAG_INLINE}<span>Fuera de Steam: <b style="color:#ffb547">${usd(top.totalUSD)}</b> en ${STORES[top.store].name}</span><span style="color:#8f98a0">· activa en RD${steam ? ` · ahorras ${usd(steam - top.totalUSD)}` : ''}</span><a href="#" data-ed="${escT(e.label)}" style="color:#67c1f5;margin-left:6px">Ver ofertas ▸</a>`;
             strip.querySelector('a')!.addEventListener('click', (ev) => { ev.preventDefault(); void pickEdition(e); });
           }
         } catch {
@@ -144,9 +156,24 @@ export default defineContentScript({
       }
     }
 
+    /** 1.8 (4): si fuera de Steam otra edición cuesta como mucho $10 o un 25 % más que la estándar, la caja lo dice. Se queda la que menos sube. */
+    function offerUpsell(e: Edition, edUSD: number) {
+      const c = box!.current();
+      if (!c || c.edition || c.owned) return;
+      const std = c.offers.find((o) => o.fit === 'ok');
+      if (!std) return;
+      const diff = Math.round((edUSD - std.totalUSD) * 100) / 100;
+      if (diff > 10 && diff > std.totalUSD * 0.25) return;
+      const cur = box!.st.upsell;
+      if (cur && cur.diff <= diff) return;
+      box!.st.upsell = { label: e.label, usd: edUSD, diff };
+      box!.paint();
+    }
+
     /** «Ver ofertas» de una tira: la caja grande pasa a esa edición. */
     async function pickEdition(e: Edition) {
       edition = e;
+      box!.st.full = true;
       box!.st.edition = e.label;
       host?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       box!.st.pane = 'stores';
