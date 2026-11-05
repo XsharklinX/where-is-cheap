@@ -12,14 +12,15 @@
       <header id="brand" class="side-brand"></header>
       <p class="side-lead">Lo justo para que el precio que ves sea el que pagas. Todo se queda en este navegador.</p>
       <nav class="side-nav">
-        <a href="#compra" data-sec="compra"><span class="ic">💳</span> Compra</a>
-        <a href="#pc" data-sec="pc"><span class="ic">🖥️</span> Tu PC</a>
-        <a href="#avisos" data-sec="avisos"><span class="ic">🔔</span> Avisos</a>
-        <a href="#fuera" data-sec="fuera"><span class="ic">🌐</span> Fuera de Steam</a>
-        <a href="#cupones" data-sec="cupones"><span class="ic">🎟️</span> Cupones</a>
-        <a href="#comisiones" data-sec="comisiones"><span class="ic">💰</span> Comisiones</a>
+        <a href="#compra" data-sec="compra"><span class="ic" data-ic="card"></span> Compra</a>
+        <a href="#pc" data-sec="pc"><span class="ic" data-ic="cpu"></span> Tu PC</a>
+        <a href="#avisos" data-sec="avisos"><span class="ic" data-ic="bell"></span> Avisos</a>
+        <a href="#fuera" data-sec="fuera"><span class="ic" data-ic="store"></span> Fuera de Steam</a>
+        <a href="#cupones" data-sec="cupones"><span class="ic" data-ic="ticket"></span> Cupones</a>
+        <a href="#comisiones" data-sec="comisiones"><span class="ic" data-ic="pct"></span> Comisiones</a>
       </nav>
       <p id="saved" class="saved" aria-live="polite"></p>
+      <p id="ver" class="side-ver"></p>
     </aside>
 
     <div class="content">
@@ -29,7 +30,7 @@
         <p class="sec-sub">Región, moneda y forma de pago para que el precio sea el que pagas.</p>
 
         <div class="card">
-          <div class="card-head"><span class="ic">🌎</span> Región y moneda</div>
+          <div class="card-head"><span class="ic" data-ic="globe"></span> Región y moneda</div>
           <p class="card-desc">La región decide qué claves activan en tu cuenta de Steam.</p>
           <div class="grid2">
             <div class="f"><label for="country">Región de Steam</label><select id="country"><option value="DO">República Dominicana · LATAM-USD</option></select><small>De momento solo RD.</small></div>
@@ -44,7 +45,7 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="ic">💳</span> Pago y comisiones</div>
+          <div class="card-head"><span class="ic" data-ic="card"></span> Pago y comisiones</div>
           <p class="card-desc">Con tarjeta o PayPal cambia lo que suma cada tienda.</p>
           <span class="lbl" id="pay-l">Con qué pagas normalmente</span>
           <div class="seg" role="radiogroup" aria-labelledby="pay-l" data-k="pay">
@@ -56,7 +57,7 @@
         </div>
 
         <div class="card">
-          <div class="card-head"><span class="ic">🏦</span> Tu tarjeta</div>
+          <div class="card-head"><span class="ic" data-ic="bank"></span> Tu tarjeta</div>
           <p class="card-desc">Si pagas en pesos, el banco cobra la tasa del mercado más su recargo.</p>
           <div class="seg" role="radiogroup" id="fxMode">
             <button type="button" role="radio" data-v="usd">En dólares</button>
@@ -117,7 +118,12 @@
           <div class="sw"><span><label for="detectAnywhere">Detectar juegos en otras páginas</label><small>YouTube, Twitch, Reddit, Metacritic, IGN… Aparece una etiqueta abajo a la derecha con el mejor precio. Chrome te pedirá permiso para leer las páginas que visitas. Solo actúa en webs de videojuegos, fichas de juegos de Wikipedia y páginas que marcan un videojuego (como la tarjeta de juego de YouTube o la categoría de Twitch); en ellas envía a Steam el nombre del posible juego. Nunca el título de otras páginas.</small></span><input type="checkbox" id="detectAnywhere" role="switch"></div>
           <div class="f">
             <span class="lbl">Panel lateral</span>
-            <p class="txt"><kbd>Alt</kbd> + <kbd>W</kbd> abre la comparación en un panel a la derecha, que sigue a la pestaña que estés mirando. Puedes cambiar el atajo en <span class="mono">chrome://extensions/shortcuts</span>.</p>
+            <p class="txt"><kbd>Alt</kbd> + <kbd>W</kbd> abre la comparación en un panel a la derecha, que sigue a la pestaña que estés mirando. <kbd>Alt</kbd> + <kbd>Shift</kbd> + <kbd>W</kbd> abre la ventana del icono. En los dos, <kbd>Enter</kbd> te lleva a la mejor oferta. Puedes cambiar los atajos en <span class="mono">chrome://extensions/shortcuts</span>.</p>
+          </div>
+          <div class="f">
+            <span class="lbl">Lo que ocultaste</span>
+            <p class="txt" id="hiddenNone">Nada. Desde el menú «…» de cada oferta puedes ocultar una tienda o un vendedor de Kinguin.</p>
+            <div id="hiddenList" class="clist"></div>
           </div>
         </div>
       </section>
@@ -150,6 +156,16 @@
       </section>
     </div>
   </main>
+  <!-- 1.7 (10): la primera vez, tres pasos -->
+  <div id="welcome" class="wel wic" hidden role="dialog" aria-modal="true" aria-labelledby="welT">
+    <div class="wel-card">
+      <div class="wel-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+      <h2 id="welT"></h2>
+      <p id="welP" class="wel-p"></p>
+      <div id="welBody"></div>
+      <div class="wel-f"><span id="welStep" class="mute"></span><span class="wel-btns"><button type="button" id="welBack" class="go ghost">Atrás</button><button type="button" id="welNext" class="go">Siguiente</button></span></div>
+    </div>
+  </div>
   <script type="module" src="./main.ts"></script>
 </body>
 </html>

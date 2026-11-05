@@ -144,6 +144,12 @@ export interface Settings {
   fxPct: number;
   /** 1.4: moneda local en que ver los precios (código ISO; por defecto DOP). */
   localCurrency: string;
+  /** 1.7: tiendas que no quieres ver (menú «…» de cada fila). */
+  hiddenStores: StoreId[];
+  /** 1.7: vendedores de Kinguin que no quieres ver, por nombre. */
+  hiddenSellers: string[];
+  /** 1.7: ya pasó por los tres pasos de bienvenida. */
+  onboarded: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -159,6 +165,9 @@ export const DEFAULT_SETTINGS: Settings = {
   detectAnywhere: false,
   fxPct: 0,
   localCurrency: 'DOP',
+  hiddenStores: [],
+  hiddenSellers: [],
+  onboarded: false,
 };
 
 export const STORES: Record<StoreId, { name: string; short: string; color: string; marketplace: boolean }> = {

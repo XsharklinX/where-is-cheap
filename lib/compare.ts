@@ -10,6 +10,7 @@ export function rank(game: Game, raw: RawOffer[], rates: Rates, s: Settings, cou
     .filter((o) => sameGame(game.name, o.title))
     .filter((o) => o.dlc === undefined || game.isDlc === undefined || o.dlc === game.isDlc)
     .filter((o) => s.marketplaces || !STORES[o.store].marketplace)
+    .filter((o) => !s.hiddenStores?.includes(o.store))
     .filter((o) => s.accounts || o.kind !== 'account')
     .map((o): Offer => {
       const priceUSD = round2(o.currency === 'EUR' ? o.price / rates.EUR : o.price);

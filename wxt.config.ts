@@ -46,6 +46,7 @@ export default defineConfig({
       omnibox: { keyword: 'wic' },
       commands: {
         'open-panel': { suggested_key: { default: 'Alt+W' }, description: 'Abrir el panel lateral de Where is cheap' },
+        [firefox ? '_execute_browser_action' : '_execute_action']: { suggested_key: { default: 'Alt+Shift+W' }, description: 'Abrir la ventana de Where is cheap' },
       },
       web_accessible_resources: [{ resources: ['stores/*.png'], matches: ['<all_urls>'] }],
       ...(firefox

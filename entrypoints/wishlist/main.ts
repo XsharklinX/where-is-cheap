@@ -113,11 +113,30 @@ function render() {
       : st.status === 'error' ? `No pudimos leer tu cuenta de Steam: ${st.error ?? 'Steam no respondió'}.`
       : st.status === 'empty' ? 'Tu sesión está iniciada, pero Steam devolvió la lista vacía. Abre cualquier página de store.steampowered.com en otra pestaña y recarga esta.'
       : 'Tu lista de deseos de Steam está vacía.';
-    $('grid').innerHTML = '';
     $('filters').innerHTML = '';
     $('tiles').hidden = true;
+    // 1.7 (9): una salida. Sin sesión, el botón abre el inicio de sesión de Steam; al volver con la sesión iniciada,
+    // la lista se lee sola (user.content avisa al background desde cualquier página de Steam).
+    const gate = (t: string, p: string, btn: string, href: string) => `<div class="wl-gate">${TAG_SVG('#1a171d', 28)}<p><b>${t}</b>${p}</p><a class="wl-steam" href="${href}" target="_blank" rel="noopener noreferrer">${btn}</a><button type="button" class="go ghost" data-a="reread">Volver a leer</button></div>`;
+    $('grid').innerHTML = !st ? '' : st.status === 'logged-out'
+      ? gate('Steam no ve tu sesión en este navegador', 'Inicia sesión en Steam y vuelve: la lista se lee sola. Solo leemos tu lista de deseos y tu biblioteca; nunca tu contraseña.', 'Iniciar sesión en Steam', 'https://store.steampowered.com/login/?redir=wishlist/')
+      : st.status === 'empty' ? gate('Steam devolvió la lista vacía', 'Abre tu lista de deseos en Steam: con la página abierta se lee de otra forma y esta se rellena sola.', 'Abrir mi lista en Steam', 'https://store.steampowered.com/wishlist/')
+      : st.status === 'error' ? gate('No pudimos leer tu cuenta', 'Steam no respondió. Abre Steam en otra pestaña y vuelve a intentarlo.', 'Abrir Steam', 'https://store.steampowered.com/') : '';
+    $('grid').classList.toggle('gated', !!st && st.status !== 'ok');
+    (document.querySelector('.wl-bar') as HTMLElement).hidden = !!st && st.status !== 'ok';
+    $('checkAll').hidden = !!st && st.status !== 'ok';
+    if (st && st.status !== 'ok') $('summary').textContent = 'Aún no hay juegos que enseñar.';
+    $('grid').querySelector('[data-a="reread"]')?.addEventListener('click', async (e) => {
+      const b = e.currentTarget as HTMLButtonElement;
+      b.disabled = true; b.textContent = 'Leyendo…';
+      await call('syncUser', { force: true }).catch(() => {});
+      void load();
+    });
     return;
   }
+  $('grid').classList.remove('gated');
+  (document.querySelector('.wl-bar') as HTMLElement).hidden = false;
+  $('checkAll').hidden = false;
   // Resumen arriba: cuántos están más baratos fuera de Steam y cuánto ahorrarías comprándolos todos hoy.
   const cheaper = items.filter((w) => today(w).save > 0);
   const total = cheaper.reduce((t, w) => t + today(w).save, 0);
@@ -240,7 +259,7 @@ async function load() {
 let t = 0;
 browser.storage.onChanged.addListener((ch, area) => {
   if (area === 'session' && ch.wishCheck) progress((ch.wishCheck.newValue as Data['run']) ?? null);
-  if (area === 'local' && (ch.wish || ch.settings)) {
+  if (area === 'local' && (ch.wish || ch.settings || ch.steamStatus)) {
     clearTimeout(t);
     t = window.setTimeout(() => { if (!(document.activeElement as HTMLElement)?.dataset?.appid) void load(); }, 400);
   }

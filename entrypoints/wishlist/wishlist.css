@@ -103,3 +103,13 @@ html, body { margin: 0; background: #121014; min-height: 100%; }
 .wl-table .tr.grp { display: block; padding: 12px 14px 6px; font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--tag); background: #131016; }
 .wl-table .tr.grp i { font-style: normal; color: var(--mute); font-family: var(--f-mono); margin-left: 4px; }
 .wl-table .tr.grp:hover { background: #131016; }
+
+/* 1.7 (9): sin lista, una salida */
+.wl-gate { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; background: #1a171d; border: 1px solid #3c3122; border-radius: 14px; padding: 18px 20px; margin-top: 22px; }
+.wl-gate p { margin: 0; flex: 1; min-width: 260px; color: #d6cfd4; font-size: 14px; }
+.wl-gate p b { display: block; color: var(--ink); font-size: 16px; margin-bottom: 2px; }
+.wl-steam { background: linear-gradient(90deg, #06bfff, #2d73ff); color: #fff !important; font-weight: 700; border-radius: 4px; padding: 10px 16px; font-size: 14px; white-space: nowrap; }
+.wl-steam:hover { filter: brightness(1.1); }
+.wl-gate .go { margin-left: 0; }
+.wl-grid.gated { display: block; }
+.wl-bar[hidden] { display: none; }

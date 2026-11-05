@@ -67,7 +67,7 @@ export function rowsHTML(c: Compare, s: Settings, compact = false): string {
   const bestIdx = c.offers.findIndex((o) => o.fit === 'ok');
   const rows = c.offers.map((o, i) => rowHTML(o, c, s, i === bestIdx, compact, i));
   // Las tiendas que faltan van debajo de lo que ya llegó y encima de Steam.
-  const pending = (c.pending ?? []).filter((id) => s.marketplaces || !STORES[id].marketplace);
+  const pending = (c.pending ?? []).filter((id) => (s.marketplaces || !STORES[id].marketplace) && !s.hiddenStores?.includes(id));
   rows.push(...pending.map(waitRow));
   if (c.game.steamUSD != null) {
     const sub = c.game.steamDiscount ? `−${c.game.steamDiscount}% hoy` : s.currency === 'both' ? local(c.game.steamUSD, c, s) : 'precio de hoy';
@@ -102,7 +102,7 @@ export function failedNote(c: Pick<Compare, 'failed'>): string {
 const STORE_LIST = 'Instant Gaming, Eneba, Driffle ni Kinguin';
 
 /** Tiendas que aún faltan, teniendo en cuenta si se muestran los marketplaces. */
-const pendingNames = (c: Compare, s: Settings) => (c.pending ?? []).filter((id) => s.marketplaces || !STORES[id].marketplace).map((id) => STORES[id].name);
+const pendingNames = (c: Compare, s: Settings) => (c.pending ?? []).filter((id) => (s.marketplaces || !STORES[id].marketplace) && !s.hiddenStores?.includes(id)).map((id) => STORES[id].name);
 
 /** Línea principal y secundaria de la franja. */
 export function headline(c: Compare, s: Settings): { t1: string; t2: string } {

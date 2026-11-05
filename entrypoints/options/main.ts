@@ -11,7 +11,26 @@ import type { Pay, Settings, StoreId } from '@/lib/types';
 import { COUPON_URLS, CURRENCIES, STORE_IDS, STORES } from '@/lib/types';
 import { andList, esc, logo, shortDate, TAG_SVG } from '@/lib/ui';
 
-document.getElementById('brand')!.innerHTML = `${TAG_SVG('#121014', 30)}<h1>Where is cheap</h1><span class="ver">v${browser.runtime.getManifest().version}</span>`;
+document.getElementById('brand')!.innerHTML = `${TAG_SVG('#121014', 30)}<h1>Where is cheap</h1>`;
+document.getElementById('ver')!.textContent = `Versión ${browser.runtime.getManifest().version}`;
+
+/* 1.7 (10): iconos de línea en vez de emojis (se ven igual en todos los sistemas). */
+const P = (d: string) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONS: Record<string, string> = {
+  card: P('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>'),
+  cpu: P('<rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/>'),
+  bell: P('<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>'),
+  store: P('<path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM9 20v-6h6v6"/>'),
+  ticket: P('<path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v8a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2z"/><path d="M14 6v12" stroke-dasharray="2 2"/>'),
+  pct: P('<path d="M19 5 5 19"/><circle cx="7" cy="7" r="2.5"/><circle cx="17" cy="17" r="2.5"/>'),
+  globe: P('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>'),
+  bank: P('<path d="M3 10 12 4l9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"/>'),
+  gpu: P('<rect x="2" y="7" width="20" height="10" rx="2"/><circle cx="9" cy="12" r="2.5"/><circle cx="16" cy="12" r="2.5"/><path d="M5 17v3"/>'),
+  ram: P('<rect x="3" y="7" width="18" height="10" rx="1.5"/><path d="M7 11v2M11 11v2M15 11v2M7 17v3M17 17v3"/>'),
+  usd: P('<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/>'),
+  pp: P('<path d="M7 20l2-14h6a4 4 0 0 1 0 8h-4l-1 6z"/>'),
+};
+document.querySelectorAll<HTMLElement>('[data-ic]').forEach((el) => (el.innerHTML = ICONS[el.dataset.ic!] ?? ''));
 const saved = document.getElementById('saved')!;
 let timer = 0;
 const DAY = 86_400_000;
@@ -66,17 +85,17 @@ async function initPc(force = false) {
   const ramVal = manual.ramGB ?? auto.ramGB;
   box.innerHTML = `
     <div class="pcc">
-      <span class="pcc-ic">🖥️</span><b>Gráfica</b>
+      <span class="pcc-ic">${ICONS.gpu}</span><b>Gráfica</b>
       <input id="pcGpu" maxlength="120" list="gpu-list" value="${esc(manual.gpu ?? '')}" placeholder="${esc(auto.gpu || 'Escribe o elige tu gráfica (p. ej. NVIDIA GeForce GTX 1080)')}">
       <span class="v" id="pcGpuS">${gpuState(manual.gpu || auto.gpu)}</span>
     </div>
     <div class="pcc">
-      <span class="pcc-ic">⚙️</span><b>Procesador</b>
+      <span class="pcc-ic">${ICONS.cpu}</span><b>Procesador</b>
       <input id="pcCpu" maxlength="120" value="${esc(manual.cpu ?? '')}" placeholder="${esc(auto.cpu || 'Por ejemplo: AMD Ryzen 5 5600X')}">
       <span class="v" id="pcCpuS">${cpuState(manual.cpu || auto.cpu)}</span>
     </div>
     <div class="pcc">
-      <span class="pcc-ic">🧠</span><b>Memoria</b>
+      <span class="pcc-ic">${ICONS.ram}</span><b>Memoria</b>
       <span class="ram"><input id="pcRam" type="number" min="1" max="1024" step="1" inputmode="numeric" value="${manual.ramGB ?? ''}" placeholder="${auto.ramGB ?? ''}">GB</span>
       <span class="v" id="pcRamS">${ramState(ramVal)}</span>
     </div>
@@ -143,7 +162,11 @@ async function initFx(s: Settings) {
         : `Hoy: 1 US$ = RD$ ${rates.DOP.toFixed(2)} en el mercado. Calcula el recargo de tu banco para que los RD$ coincidan con tu estado de cuenta.`;
   };
   const save = async (v: number) => { cur = v; await saveSettings({ fxPct: v }); paint(v > 0 || !box.hidden ? 'dop' : 'usd'); };
-  paint(cur > 0 ? 'dop' : 'usd');
+  // 1.7 (10): si en la bienvenida elegiste «Tarjeta en pesos», se abre el cálculo del recargo.
+  const fromWelcome = sessionStorage.getItem('wic-fx') === '1';
+  sessionStorage.removeItem('wic-fx');
+  paint(cur > 0 || fromWelcome ? 'dop' : 'usd');
+  if (fromWelcome) $<HTMLInputElement>('fxUsd').focus();
   mode.addEventListener('click', async (e) => {
     const b = (e.target as HTMLElement).closest('button');
     if (!b?.dataset.v) return;
@@ -259,3 +282,83 @@ async function init() {
 }
 
 void init();
+
+/* ---------- 1.7 (14): lo que ocultaste ---------- */
+
+async function renderHidden() {
+  const st = await getSettings();
+  const items = [
+    ...(st.hiddenStores ?? []).map((id) => ({ k: 'store', v: id as string, html: `${logo(id, STORES[id].name)}<b>${STORES[id].name}</b><span class="mute">tienda</span>` })),
+    ...(st.hiddenSellers ?? []).map((n) => ({ k: 'seller', v: n, html: `${logo('kinguin', 'Kinguin')}<b>${esc(n)}</b><span class="mute">vendedor de Kinguin</span>` })),
+  ];
+  $('hiddenNone').hidden = items.length > 0;
+  $('hiddenList').innerHTML = items.map((i) => `<div class="crow">${i.html}<button type="button" data-unhide="${i.k}" data-v="${esc(i.v)}">Volver a mostrar</button></div>`).join('');
+}
+$('hiddenList').addEventListener('click', async (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-unhide]');
+  if (!b) return;
+  const st = await getSettings();
+  if (b.dataset.unhide === 'store') await saveSettings({ hiddenStores: st.hiddenStores.filter((x) => x !== b.dataset.v) });
+  else await saveSettings({ hiddenSellers: st.hiddenSellers.filter((x) => x !== b.dataset.v) });
+  flash();
+  void renderHidden();
+});
+void renderHidden();
+browser.storage.onChanged.addListener((ch, area) => { if (area === 'local' && ch.settings) void renderHidden(); });
+
+/* ---------- 1.7 (10): la primera vez, tres pasos ---------- */
+
+async function welcome() {
+  const st = await getSettings();
+  if (st.onboarded || location.hash !== '#bienvenida') return;
+  const box = $('welcome');
+  let step = 0;
+  let payMode: 'usd' | 'dop' | 'paypal' = st.pay === 'paypal' ? 'paypal' : st.fxPct > 0 ? 'dop' : 'usd';
+  let cur = st.localCurrency;
+  let view: Settings['currency'] = st.currency;
+  const opt = (name: string, v: string, on: boolean, ic: string, t: string, sub: string) =>
+    `<label class="wel-opt${on ? ' on' : ''}"><input type="radio" name="${name}" value="${v}"${on ? ' checked' : ''}>${ICONS[ic]}<span>${t}<small>${sub}</small></span></label>`;
+  const draw = async () => {
+    box.querySelectorAll('.wel-dots i').forEach((d, i) => d.classList.toggle('on', i <= step));
+    $('welStep').textContent = `Paso ${step + 1} de 3`;
+    $('welBack').style.visibility = step ? 'visible' : 'hidden';
+    $('welNext').textContent = step === 2 ? 'Empezar' : 'Siguiente';
+    if (step === 0) {
+      $('welT').textContent = '¿En qué moneda quieres ver los precios?';
+      $('welP').textContent = 'Comparamos para cuentas de Steam de República Dominicana (LATAM-USD): solo verás claves que activan ahí.';
+      $('welBody').innerHTML = `<label class="wel-sel">Tu moneda<select id="welCur">${Object.entries(CURRENCIES).map(([k, c]) => `<option value="${k}"${k === cur ? ' selected' : ''}>${esc(c.name)} · ${k}</option>`).join('')}</select></label>
+        ${opt('view', 'both', view === 'both', 'globe', 'Dólares y tu moneda', 'El precio en USD con tu moneda al lado')}${opt('view', 'usd', view === 'usd', 'usd', 'Solo dólares', 'Como lo cobran las tiendas')}${opt('view', 'dop', view === 'dop', 'bank', 'Solo tu moneda', 'A la tasa del mercado')}`;
+      $<HTMLSelectElement>('welCur').addEventListener('change', (e) => (cur = (e.target as HTMLSelectElement).value));
+      $('welBody').querySelectorAll<HTMLInputElement>('input[name="view"]').forEach((r) => r.addEventListener('change', () => { view = r.value as Settings['currency']; void draw(); }));
+    } else if (step === 1) {
+      $('welT').textContent = '¿Cómo pagas normalmente?';
+      $('welP').textContent = 'Cada tienda suma una comisión distinta según el método. Lo puedes cambiar luego.';
+      $('welBody').innerHTML = opt('pay', 'usd', payMode === 'usd', 'card', 'Tarjeta en dólares', 'La comisión de la tienda y nada más')
+        + opt('pay', 'dop', payMode === 'dop', 'usd', 'Tarjeta en pesos', 'Tu banco suma su recargo: al terminar te enseñamos a calcularlo con un cargo tuyo')
+        + opt('pay', 'paypal', payMode === 'paypal', 'pp', 'PayPal', 'Suele costar un poco más en Eneba y Kinguin');
+      $('welBody').querySelectorAll<HTMLInputElement>('input[name="pay"]').forEach((r) => r.addEventListener('change', () => { payMode = r.value as typeof payMode; void draw(); }));
+    } else {
+      $('welT').textContent = 'Tu PC';
+      $('welP').textContent = 'Con esto te decimos en cada juego si tu PC lo corre. Lo lee el navegador y no sale de aquí.';
+      $('welBody').innerHTML = '<p class="mute">Leyendo…</p>';
+      const info = await call<{ auto: PcAuto; manual: PcManual }>('pcInfo', { gpu: detectGpu(), force: false }).catch(() => null);
+      if (step !== 2) return;
+      const gpu = info?.manual.gpu || info?.auto.gpu || '', cpu = info?.manual.cpu || info?.auto.cpu || '', ram = info?.manual.ramGB ?? info?.auto.ramGB ?? null;
+      const row = (ic: string, t: string, v: string, ok: boolean) => `<div class="wel-pc">${ICONS[ic]}<b>${t}</b><span>${v ? esc(v) : 'Sin leer'}</span>${ok ? '<span class="chip ok">Bien</span>' : '<span class="chip warn">Revísalo</span>'}</div>`;
+      $('welBody').innerHTML = row('gpu', 'Gráfica', gpu, !!gpu && !softwareGpu(gpu) && !!gpuScore(gpu)) + row('cpu', 'Procesador', cpu, !!cpu && !!cpuScore(cpu)) + row('ram', 'Memoria', ram ? `${ram} GB` : '', !!ram)
+        + '<p class="mute wel-note">Si algo no cuadra (en un portátil el navegador puede ver la gráfica integrada), lo corriges en «Tu PC» al terminar.</p>';
+    }
+  };
+  box.hidden = false;
+  $('welBack').addEventListener('click', () => { step = Math.max(0, step - 1); void draw(); });
+  $('welNext').addEventListener('click', async () => {
+    if (step < 2) { step++; void draw(); return; }
+    await saveSettings({ localCurrency: cur, currency: view, pay: payMode === 'paypal' ? 'paypal' : 'card', onboarded: true });
+    box.hidden = true;
+    if (payMode === 'dop') sessionStorage.setItem('wic-fx', '1');
+    history.replaceState(null, '', payMode === 'dop' ? '#compra' : '#pc');
+    location.reload();
+  });
+  await draw();
+}
+void welcome();

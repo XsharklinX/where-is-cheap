@@ -1,14 +1,21 @@
 import '@/lib/ui.css';
 import '@/lib/block.css';
-import { appidFromUrl, call, friendlyError, streamCompare, trackClicks } from '@/lib/api';
-import { alertHTML, dlcHTML, dlcToPrice, panelFootHTML, sellersToAsk, tableHTML, topHTML, type BlockState, type DlcPrice, type DlcView } from '@/lib/block';
-import type { SellerNote } from '@/lib/stores/kinguin';
-import { readEditions } from '@/lib/editions';
+import '@/lib/box.css';
+import { appidFromUrl, call, friendlyError, streamCompare } from '@/lib/api';
+import { blockCase } from '@/lib/block';
+import { boxShell, createBox } from '@/lib/box';
+import { savings } from '@/lib/compare';
+import { editionTitle, readEditions } from '@/lib/editions';
 import { detectGpu, type RunCheck } from '@/lib/pc';
 import { getSettings } from '@/lib/settings';
 import { sessionFromDom } from '@/lib/steamUser';
-import type { Compare, Settings } from '@/lib/types';
-import { esc, swapRows, TAG_SVG, toast } from '@/lib/ui';
+import type { Compare, Edition, Settings } from '@/lib/types';
+import { STORES } from '@/lib/types';
+import { norm } from '@/lib/match';
+
+const TAG_INLINE = '<svg width="12" height="12" viewBox="0 0 34 34" aria-hidden="true" style="vertical-align:-1px;margin-right:5px"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11.4a2.5 2.5 0 0 1 1.77.73l9.6 9.6a2.5 2.5 0 0 1 0 3.54l-11.4 11.4a2.5 2.5 0 0 1-3.54 0l-9.6-9.6A2.5 2.5 0 0 1 4 17.9Z" fill="#ffb547"/><circle cx="11" cy="11" r="2.6" fill="#1b2838"/></svg>';
+const usd = (n: number) => `$${n.toFixed(2)}`;
+const escT = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]!));
 
 export default defineContentScript({
   matches: ['https://store.steampowered.com/app/*'],
@@ -23,16 +30,13 @@ export default defineContentScript({
     const anchor = wrapper ?? document.querySelector('#game_area_purchase');
     if (!anchor) return;
 
-    // 10: el bloque recuerda si lo dejaste abierto, de un juego a otro.
-    const st: BlockState = { open: !!(await browser.storage.local.get('blockOpen')).blockOpen, showNo: false, chart: false, editions: [] };
-    let editionsRead = false;
-    let target: number | null = await call<number | null>('getTarget', { appid }).catch(() => null);
-    let last: Compare | null = null;
     let s: Settings = await getSettings();
     let run = 0;
-    // 9: los DLC se leen una vez; sus precios fuera de Steam, solo al abrir la sección.
-    let dlc: DlcView | null = null;
-    let dlcAsked = false;
+    let editions: Edition[] = [];
+    let editionsDone = false;
+    let edition: Edition | undefined;
+    let box: ReturnType<typeof createBox> | null = null;
+    let host: HTMLElement | null = null;
 
     const ui = await createShadowRootUi(ctx, {
       name: 'where-is-cheap',
@@ -42,157 +46,118 @@ export default defineContentScript({
       onMount(container) {
         const root = document.createElement('div');
         root.className = 'wic';
-        root.style.margin = '0 0 16px';
-        root.innerHTML = `<div class="blk${s.currency === 'usd' ? ' usd' : ''}"><div class="b-top"></div><div class="b-panel" hidden><div class="b-rows"></div><div class="b-pf"></div></div><div class="b-dlc"></div><div class="b-al"></div></div>`;
+        root.innerHTML = boxShell('steam', s);
         container.append(root);
-        wire(root);
-        void load(root, false);
+        box = createBox(root, appid, 'steam', s, {
+          refresh: () => void load(true),
+          options: (hash) => void call('options', hash ? { hash } : undefined),
+          std: () => { edition = undefined; box!.st.edition = undefined; box!.st.pane = null; void load(false); },
+          edition: (label) => { const e = editions.find((x) => x.label === label); if (e) void pickEdition(e); },
+        }, root);
+        void load(false);
         return root;
       },
     });
     ui.mount();
+    host = document.querySelector('where-is-cheap');
 
-    const $ = <T extends HTMLElement>(root: HTMLElement, sel: string) => root.querySelector<T>(sel)!;
-
-    function paint(root: HTMLElement) {
-      $(root, '.blk').classList.toggle('usd', s.currency === 'usd');
-      $(root, '.b-top').innerHTML = topHTML(last, s, st);
-      const panel = $(root, '.b-panel');
-      panel.hidden = !st.open || !last;
-      if (last) {
-        swapRows($(root, '.b-rows'), tableHTML(last, s, st));
-        $(root, '.b-pf').innerHTML = panelFootHTML(last, s);
-        trackClicks($(root, '.blk'), last, root);
-        askSellers(root);
-      }
-      paintDlc(root);
-      // El aviso solo se repinta si no estás escribiendo en él.
-      const al = $(root, '.b-al');
-      const act = (root.getRootNode() as ShadowRoot).activeElement;
-      if (!act || !al.contains(act)) {
-        al.innerHTML = last && (last.owned || last.game.isFree) ? '' : alertHTML(target, last);
-      }
-    }
-
-    /** 10: con la tabla abierta y Kinguin ya respondido, quién vende su oferta más barata. */
-    function askSellers(root: HTMLElement) {
-      if (!st.open || !last || last.pending?.includes('kinguin')) return;
-      for (const { url, cents } of sellersToAsk(last, st)) {
-        (st.sellers ??= {})[url] = null;
-        call<SellerNote | null>('seller', { url, cents }).then((n) => { if (n) { st.sellers![url] = n; paint(root); } }).catch(() => {});
-      }
-    }
-
-    function paintDlc(root: HTMLElement) {
-      $(root, '.b-dlc').innerHTML = dlcHTML(dlc, last, s, st);
-    }
-
-    /** 9: busca fuera de Steam los DLC que te faltan, de dos en dos. */
-    async function priceDlcs(root: HTMLElement) {
-      if (!dlc) return;
-      const queue = dlcToPrice(dlc).filter((d) => dlc!.prices[d.appid] === undefined || dlc!.prices[d.appid] === 'error');
-      for (const d of queue) dlc.prices[d.appid] = 'loading';
-      paintDlc(root);
-      const work = async () => {
-        for (let d = queue.shift(); d; d = queue.shift()) {
-          const id = d.appid;
-          dlc!.prices[id] = await call<DlcPrice>('dlcPrice', { appid: id }).catch(() => 'error' as const);
-          paintDlc(root);
-        }
-      };
-      await Promise.all([work(), work()]);
-    }
-
-    async function load(root: HTMLElement, fresh: boolean) {
+    async function load(fresh: boolean) {
       const my = ++run;
       s = await getSettings();
-      if (fresh) last = null;
-      paint(root);
+      box!.setSettings(s);
+      if (fresh) box!.set(null);
       try {
-        const c = await streamCompare(appid!, fresh, (p) => { if (my === run) { last = p; readEds(p); paint(root); } }, st.edition ? st.editions.find((e) => e.label === st.edition) : undefined);
+        const c = await streamCompare(appid!, fresh, (p) => { if (my === run) { box!.set(p); glance(p); } }, edition);
         if (my !== run) return;
-        if (c.game.isFree) { root.remove(); return; }
-        last = c;
-        readEds(c);
-        paint(root);
-        // 4: con la ficha ya leída, los requisitos están guardados y no se vuelve a pedir a Steam.
-        if (!dlcAsked && !c.game.isDlc) {
-          dlcAsked = true;
-          call<Omit<DlcView, 'open' | 'prices'>>('dlcList', { appid }).then((r) => { if (r.total) { dlc = { ...r, open: false, prices: {} }; paintDlc(root); } }).catch(() => {});
+        if (c.game.isFree) { ui.remove(); return; }
+        box!.set(c);
+        glance(c);
+        // 5: que el buscador de Steam sepa el precio de este juego durante un día (usa la comparación ya guardada).
+        if (!edition) void call('badgeFor', { appid }).catch(() => {});
+        if (box!.st.run === undefined) {
+          box!.st.run = null;
+          call<RunCheck>('canRun', { appid, gpu: detectGpu() }).then((r) => { box!.st.run = r; box!.paint(); }).catch(() => {});
         }
-        if (st.run === undefined) {
-          st.run = null;
-          call<RunCheck>('canRun', { appid, gpu: detectGpu() }).then((r) => { st.run = r; if (my === run) paint(root); }).catch(() => {});
-        }
+        if (!editionsDone && !edition) { editionsDone = true; editions = readEditions(document, c.game.name); box!.st.editions = editions; box!.paint(); void stripEditions(); }
       } catch (e) {
         if (my !== run) return;
-        $(root, '.b-top').innerHTML = `<div class="b-h">${TAG_SVG('#1f1a22', 16)}<span class="b-k">No pudimos comparar precios</span></div><div class="b-main one"><span class="b-ic" style="color:var(--bad)">!</span><div><div class="b-t">${esc(friendlyError(e))}</div><div class="b-s"><button type="button" class="b-more" data-a="retry" style="margin:6px 0 0">Reintentar</button></div></div></div>`;
-        $(root, '.b-panel').hidden = true;
+        box!.error(friendlyError(e));
       }
     }
 
-    // 10 (ediciones): se leen una vez, con el nombre del juego que da Steam.
-    function readEds(c: Compare) {
-      if (editionsRead || st.edition) return;
-      editionsRead = true;
-      st.editions = readEditions(document, c.game.name);
+    /* ---------- 3: la fila «Fuera de Steam» en la columna derecha ---------- */
+    function glance(c: Compare) {
+      if (edition) return;
+      const col = document.querySelector('.glance_ctn_responsive_left');
+      if (!col) return;
+      let row = col.querySelector<HTMLElement>('.wic-glance');
+      const top = c.offers.find((o) => o.fit === 'ok');
+      const k = blockCase(c, s);
+      if (k !== 'best' || !top || c.owned) { row?.remove(); return; }
+      if (!row) {
+        row = document.createElement('div');
+        row.className = 'dev_row wic-glance';
+        row.style.cssText = 'cursor:pointer;margin:6px -6px;padding:4px 6px;border-radius:2px;background:linear-gradient(90deg,rgba(255,181,71,.10),rgba(255,181,71,0) 85%)';
+        row.title = 'Ver dónde comprarlo fuera de Steam';
+        row.tabIndex = 0;
+        const go = () => { host?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+        row.addEventListener('click', go);
+        row.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+        const after = col.querySelector('.release_date') ?? col.querySelector('.user_reviews');
+        if (after) after.after(row); else col.prepend(row);
+      }
+      const save = savings(c);
+      row.innerHTML = `<div class="subtitle column" style="color:#c7a25a">Fuera de Steam:</div><div class="summary column" style="color:#ffb547;font-weight:700">${TAG_INLINE}${usd(top.totalUSD)} en ${STORES[top.store].name}${save ? `<span style="margin-left:6px;background:#4c6b22;color:#beee11;font-weight:400;padding:0 4px">-${save.pct}%</span>` : ''}</div>`;
     }
 
-    function wire(root: HTMLElement) {
-      root.addEventListener('click', (ev) => {
-        const el = (ev.target as HTMLElement).closest<HTMLElement>('[data-a],[data-ed]');
-        if (!el) return;
-        if (el.dataset.ed != null) {
-          st.edition = el.dataset.ed || undefined;
-          st.open = true;
-          last = null;
-          void load(root, false);
-          return;
+    /* ---------- 4: una tira bajo cada caja de edición de Steam ---------- */
+    function boxFor(e: Edition): Element | null {
+      for (const el of document.querySelectorAll('#game_area_purchase .game_area_purchase_game')) {
+        if (el.closest('.dynamic_bundle_description')) continue;
+        if (norm(editionTitle(el.querySelector('h1, h2.title, .title')?.textContent ?? '')) === norm(e.name)) return el;
+      }
+      return null;
+    }
+
+    async function stripEditions() {
+      for (const e of editions.slice(1)) {
+        const el = boxFor(e);
+        if (!el) continue;
+        const strip = document.createElement('div');
+        strip.className = 'wic-strip';
+        strip.style.cssText = 'margin:-30px 0 30px;padding:24px 16px 8px 14px;background:rgba(0,0,0,.35);border-radius:0 0 4px 4px;box-shadow:inset 3px 0 0 #ffb547;font-size:12.5px;color:#c6d4df;display:flex;align-items:center;gap:6px;flex-wrap:wrap;position:relative;z-index:0';
+        strip.innerHTML = `${TAG_INLINE}<span style="color:#8f98a0">Fuera de Steam: buscando…</span>`;
+        (el.closest('.game_area_purchase_game_wrapper') ?? el).after(strip);
+        try {
+          const c = await streamCompare(appid!, false, () => {}, e);
+          const top = c.offers.find((o) => o.fit === 'ok');
+          const steam = e.steamUSD ?? c.game.steamUSD;
+          if (!top) strip.innerHTML = `${TAG_INLINE}<span style="color:#8f98a0">Fuera de Steam no hay ofertas de esta edición que activen en RD.</span>`;
+          else if (steam != null && steam <= top.totalUSD) strip.innerHTML = `${TAG_INLINE}<span>Steam es lo más barato para esta edición. Fuera, desde ${usd(top.totalUSD)} en ${STORES[top.store].name}.</span>`;
+          else {
+            strip.innerHTML = `${TAG_INLINE}<span>Fuera de Steam: <b style="font-family:ui-monospace,Consolas,monospace;color:#ffb547">${usd(top.totalUSD)}</b> en ${STORES[top.store].name}</span><span style="color:#8f98a0">· activa en RD${steam ? ` · ahorras ${usd(steam - top.totalUSD)}` : ''}</span><a href="#" data-ed="${escT(e.label)}" style="color:#67c1f5;margin-left:6px">Ver ofertas ▸</a>`;
+            strip.querySelector('a')!.addEventListener('click', (ev) => { ev.preventDefault(); void pickEdition(e); });
+          }
+        } catch {
+          strip.remove();
         }
-        switch (el.dataset.a) {
-          case 'toggle':
-            st.open = !st.open;
-            void browser.storage.local.set({ blockOpen: st.open });
-            paint(root);
-            break;
-          case 'no': st.showNo = !st.showNo; paint(root); break;
-          case 'chart': st.chart = !st.chart; paint(root); break;
-          case 'refresh': void load(root, true); break;
-          case 'retry': void load(root, true); break;
-          case 'options': void call('options'); break;
-          case 'pc': void call('options', { hash: 'pc' }); break;
-          case 'dlc':
-            if (!dlc) break;
-            dlc.open = !dlc.open;
-            paintDlc(root);
-            if (dlc.open) void priceDlcs(root);
-            break;
-          case 't-edit': target = null; $(root, '.b-al').innerHTML = alertHTML(null, last); $(root, '#wic-target').focus(); break;
-          case 't-clear':
-            target = null;
-            void call('setTarget', { appid, target: null });
-            $(root, '.b-al').innerHTML = alertHTML(null, last);
-            break;
-        }
-      });
-      // 8: guardar el límite (Enter o «Guardar»).
-      root.addEventListener('submit', (ev) => {
-        ev.preventDefault();
-        const inp = $<HTMLInputElement>(root, '#wic-target');
-        const n = Number(inp.value);
-        if (!(n > 0)) { inp.setCustomValidity('Pon un precio mayor que 0'); inp.reportValidity(); return; }
-        inp.setCustomValidity('');
-        target = Math.round(n * 100) / 100;
-        void call('setTarget', { appid, target, name: last?.game.name }).then(() => toast(root, `Te avisamos si baja de $${target!.toFixed(2)}`)).catch(() => toast(root, 'No se pudo guardar el aviso'));
-        $(root, '.b-al').innerHTML = alertHTML(target, last);
-      });
+      }
+    }
+
+    /** «Ver ofertas» de una tira: la caja grande pasa a esa edición. */
+    async function pickEdition(e: Edition) {
+      edition = e;
+      box!.st.edition = e.label;
+      host?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      box!.st.pane = 'stores';
+      await load(false);
     }
 
     browser.storage.onChanged.addListener((ch, area) => {
-      const root = ui.mounted as HTMLElement | undefined;
-      if (area === 'local' && (ch.settings || ch.coupons || ch.feesLearned) && root?.isConnected) void load(root, false);
+      if (area !== 'local' || !(ui.mounted as HTMLElement | undefined)?.isConnected) return;
+      if (ch.settings || ch.coupons || ch.feesLearned) void load(false);
       // 4: si corriges tu PC en Ajustes, la línea se rehace sola.
-      if (area === 'local' && ch.pcManual && root?.isConnected) void call<RunCheck>('canRun', { appid }).then((r) => { st.run = r; paint(root); }).catch(() => {});
+      if (ch.pcManual) void call<RunCheck>('canRun', { appid }).then((r) => { box!.st.run = r; box!.paint(); }).catch(() => {});
     });
   },
 });

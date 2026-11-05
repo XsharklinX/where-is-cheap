@@ -55,7 +55,7 @@ export function tipHTML(o: Offer, c: Compare, s: Settings): string {
 const priced = (o: Offer, c: Compare, s: Settings, cls: string) =>
   `<span class="b-price ${cls}" tabindex="0">${money(o.totalUSD, c, s)}${tipHTML(o, c, s)}</span>`;
 
-const pendingOf = (c: Compare, s: Settings) => (c.pending ?? []).filter((id) => s.marketplaces || !STORES[id].marketplace);
+export const pendingOf = (c: Compare, s: Settings) => (c.pending ?? []).filter((id) => (s.marketplaces || !STORES[id].marketplace) && !s.hiddenStores?.includes(id));
 
 /** 7: qué caso es. */
 export type BlockCase = 'loading' | 'owned' | 'steam' | 'best' | 'none';
@@ -183,20 +183,21 @@ export function tableHTML(c: Compare, s: Settings, st: BlockState): string {
     const who = o.fit === 'warn'
       ? `<span class="chip warn" data-tip="${esc(o.fitWhy)}" tabindex="0">${esc(o.fitText)}</span>`
       : sellerHTML(st.sellers?.[o.url]) || `<span>${STORES[o.store].marketplace ? 'vende un tercero' : 'tienda'}</span>`;
-    return `<a class="b-row${o.i === bestI ? ' best' : ''}" data-k="${esc(`${o.store}|${o.url}`)}" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}" title="${esc(o.coupon ? `Abrir en ${nm} y copiar el cupón ${o.coupon}` : `Abrir en ${nm}`)}">
+    const seller = st.sellers?.[o.url]?.name;
+    return `<div class="b-row${o.i === bestI ? ' best' : ''}" data-k="${esc(`${o.store}|${o.url}`)}"><a class="b-rl" href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}" title="${esc(o.coupon ? `Abrir en ${nm} y copiar el cupón ${o.coupon}` : `Abrir en ${nm}`)}">
       ${logo(o.store, nm)}<span class="nm"><b>${nm}</b>${who}</span><span class="ty">${kindShort(o)} · ${esc(regionShort(o))}</span>
-      ${priced(o, c, s, 'tot')}${both ? `<span class="rd">${localNum(o.totalUSD, c, s)}</span>` : ''}<span class="ir">${ARROW}</span></a>`;
+      ${priced(o, c, s, 'tot')}${both ? `<span class="rd">${localNum(o.totalUSD, c, s)}</span>` : ''}<span class="ir">${ARROW}</span></a><button type="button" class="b-mn" data-a="menu" data-store="${o.store}"${seller ? ` data-seller="${esc(seller)}"` : ''} aria-label="Más opciones de ${nm}" title="Ocultar esta tienda o este vendedor">…</button></div>`;
   };
   const sub = (g: StoreGroup) => !g.rest.length ? '' : `<div class="b-sub" data-k="sub|${g.store}"><span>+${g.rest.length} de ${STORES[g.store].name}</span>${g.rest.map((o) =>
     ` · <a href="${esc(o.url)}" target="_blank" rel="noopener noreferrer" data-store="${o.store}" data-i="${o.i}">${kindShort(o)} ${esc(regionShort(o))} ${money(o.totalUSD, c, s)}</a>`).join('')}</div>`;
-  const waits = pendingOf(c, s).map((id) => `<div class="b-row wait" data-k="wait|${id}" aria-hidden="true">${logo(id, STORES[id].name)}<span class="nm"><b>${STORES[id].name}</b><span>Buscando…</span></span><span class="ty"></span><span class="barw"></span>${both ? '<span></span>' : ''}<span></span></div>`);
+  const waits = pendingOf(c, s).map((id) => `<div class="b-row wait" data-k="wait|${id}" aria-hidden="true">${logo(id, STORES[id].name)}<span class="nm"><b>${STORES[id].name}</b><span>Buscando…</span></span><span class="ty"></span><span class="barw"></span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`);
   let fold = '';
   if (no.length) {
     const regions = [...new Set(no.flatMap((o) => o.regions.map(prettyRegion)))];
     fold = `<button type="button" class="b-fold" data-a="no" aria-expanded="${st.showNo}" data-k="fold"><span class="nx">${no.length} ${no.length === 1 ? 'oferta no activa' : 'ofertas no activan'} en RD</span><span class="mute">${esc(andList(regions.slice(0, 3)))}${regions.length > 3 ? ' y otras' : ''} · desde ${money(no[0].totalUSD, c, s)}</span><span class="chev">${st.showNo ? 'Ocultar ▴' : 'Mostrar ▸'}</span></button>`;
-    if (st.showNo) fold += no.map((o) => `<div class="b-row no" data-k="no|${esc(o.url)}">${logo(o.store, STORES[o.store].name)}<span class="nm"><b>${STORES[o.store].name}</b><span class="chip no" data-tip="${esc(o.fitWhy)}" tabindex="0">${esc(o.fitText)}</span></span><span class="ty">${kindShort(o)} · ${esc(regionShort(o))}</span><span class="tot"><s>${money(o.totalUSD, c, s)}</s></span>${both ? '<span></span>' : ''}<span></span></div>`).join('');
+    if (st.showNo) fold += no.map((o) => `<div class="b-row no" data-k="no|${esc(o.url)}">${logo(o.store, STORES[o.store].name)}<span class="nm"><b>${STORES[o.store].name}</b><span class="chip no" data-tip="${esc(o.fitWhy)}" tabindex="0">${esc(o.fitText)}</span></span><span class="ty">${kindShort(o)} · ${esc(regionShort(o))}</span><span class="tot"><s>${money(o.totalUSD, c, s)}</s></span>${both ? '<span class="rd"></span>' : ''}<span></span><span></span></div>`).join('');
   }
-  const head = `<div class="b-row th" data-k="th"><span></span><span>Tienda</span><span class="ty">Tipo</span><span class="r">Pagas</span>${both ? '<span class="r rd">RD$</span>' : ''}<span></span></div>`;
+  const head = `<div class="b-row th" data-k="th"><span></span><span>Tienda</span><span class="ty">Tipo</span><span class="r">Pagas</span>${both ? '<span class="r rd">RD$</span>' : ''}<span></span><span></span></div>`;
   const body = groups.map((g) => row(g.top) + sub(g)).join('') + waits.join('') + fold;
   return head + (body || '<p class="b-empty">Ninguna tienda tiene este juego.</p>');
 }
@@ -297,6 +298,32 @@ export function runHTML(run: RunCheck | null | undefined): string {
   else if (unknown.some((p) => p.why?.startsWith('No entendemos')) && unknown.length === run.parts.length) return '';
   else head = `<b>¿Lo corre tu PC?</b> ${esc(unknown.find((p) => p.part === 'gpu')?.why ?? unknown[0]?.why ?? 'No pudimos compararlo')}. ${fix}`;
   const cls = run.level === 'yes' ? 'ok' : run.level === 'tight' ? 'warn' : run.level === 'no' ? 'no' : 'gh';
+  return `<div class="b-run ${cls}" tabindex="0"><i></i><span>${head}</span>${run.level !== 'unknown' ? '<button type="button" class="b-fix" data-a="pc">Tu PC</button>' : ''}<span class="b-tip" role="tooltip">${runRowsHTML(run)}</span></div>`;
+}
+
+/** 1.7: el chip de «¿Lo corre tu PC?». Vacío si no hay nada que decir. */
+export function runChip(run: RunCheck | null | undefined): { cls: string; text: string } | null {
+  if (!run) return null;
+  if (run.level === 'nopc') return { cls: 'gh', text: '¿Lo corre tu PC?' };
+  if (!run.parts.length) return null;
+  const unknown = run.parts.filter((p) => p.level === 'unknown');
+  if (run.level === 'yes') return { cls: 'ok', text: 'Tu PC lo corre' };
+  if (run.level === 'tight') return { cls: 'warn', text: 'Tu PC lo corre justo' };
+  if (run.level === 'no') return { cls: 'no', text: 'Tu PC no llega' };
+  if (unknown.some((p) => p.why?.startsWith('No entendemos')) && unknown.length === run.parts.length) return null;
+  return { cls: 'gh', text: '¿Lo corre tu PC?' };
+}
+
+/** 1.7: lo que se abre al pulsar el chip: la frase, cada componente y el botón para corregirlo. */
+export function runPaneHTML(run: RunCheck | null | undefined): string {
+  if (!run) return '';
+  if (run.level === 'nopc') return `<div class="x-run"><p>El navegador no nos dice qué PC tienes.</p><button type="button" class="x-btn" data-a="pc">Dínoslo en Ajustes</button></div>`;
+  const m = runHTML(run).match(/^<div class="b-run [a-z]+" tabindex="0"><i><\/i><span>([\s\S]*?)<\/span>(?:<button[^>]*>Tu PC<\/button>)?<span class="b-tip"/);
+  const head = (m?.[1] ?? '').replace(/<button[^>]*>Corregir<\/button>/, '');
+  return `<div class="x-run">${head ? `<p>${head}</p>` : ''}<div class="x-rq">${runRowsHTML(run)}</div><button type="button" class="x-btn" data-a="pc">Corregir mi PC en Ajustes</button></div>`;
+}
+
+function runRowsHTML(run: RunCheck): string {
   const rows = run.parts.map((p) => {
     const [c, t] = LVL[p.level];
     const lines = [`<i>Tienes</i>${p.mine ? esc(cut(p.mine, 48)) : 'sin leer'}`];
@@ -305,7 +332,7 @@ export function runHTML(run: RunCheck | null | undefined): string {
     return `<div><span>${partLabel(p.part)}</span><span class="${c}">${p.level === 'unknown' ? esc(p.why ?? '¿?') : t}</span></div><small class="rq">${lines.join('<br>')}</small>`;
   }).join('');
   const integ = run.integrated ? '<small class="n">El navegador ve una gráfica integrada. Si tu portátil tiene otra, ponla en Ajustes.</small>' : '';
-  return `<div class="b-run ${cls}" tabindex="0"><i></i><span>${head}</span>${run.level !== 'unknown' ? '<button type="button" class="b-fix" data-a="pc">Tu PC</button>' : ''}<span class="b-tip" role="tooltip">${rows}${integ}<small class="n">Aproximado: comparamos con una tabla de rendimiento propia, no con pruebas reales.</small></span></div>`;
+  return `${rows}${integ}<small class="n">Aproximado: comparamos con una tabla de rendimiento propia, no con pruebas reales.</small>`;
 }
 
 /* ---------- 9: DLC y edición completa ---------- */
@@ -344,7 +371,7 @@ export function dlcCheapest(d: DlcRow, p: DlcPrice | 'loading' | 'error' | undef
   return Number.isFinite(m) ? m : null;
 }
 
-export function dlcHTML(v: DlcView | null, c: Compare | null, s: Settings, st: BlockState): string {
+export function dlcHTML(v: DlcView | null, c: Compare | null, s: Settings, st: BlockState, bodyOnly = false): string {
   if (!v || !v.total || !c) return '';
   const missing = v.items.filter((d) => !d.owned && !d.soon);
   const ownedN = v.items.filter((d) => d.owned).length;
@@ -354,7 +381,7 @@ export function dlcHTML(v: DlcView | null, c: Compare | null, s: Settings, st: B
   if (v.ownedKnown && ownedN) bits.push(missing.length ? `tienes ${ownedN}, te ${missing.length === 1 ? 'falta 1' : `faltan ${missing.length}`}` : 'los tienes todos');
   if (steamSum > 0) bits.push(`${money(steamSum, c, s)} en Steam${v.ownedKnown && ownedN ? ' lo que falta' : ''}`);
   const head = `<button type="button" class="b-dlch" data-a="dlc" aria-expanded="${v.open}"><span>${bits.join(' · ')}</span><span class="chev">${v.open ? 'Ocultar ▴' : 'Ver precios ▸'}</span></button>`;
-  if (!v.open) return head;
+  if (!v.open) return bodyOnly ? '' : head;
 
   const toPrice = dlcToPrice(v);
   const searched = new Set(toPrice.map((d) => d.appid));
@@ -409,7 +436,7 @@ export function dlcHTML(v: DlcView | null, c: Compare | null, s: Settings, st: B
   if (!allIn) foot.push(`Buscamos fuera de Steam los ${DLC_MAX} más caros que te faltan.`);
   if (!v.ownedKnown) foot.push('No sabemos cuáles tienes: inicia sesión en Steam para verlo.');
   if (v.total > shown.length) foot.push(`<a href="https://store.steampowered.com/dlc/${c.game.appid}/" target="_blank" rel="noopener noreferrer">Ver los ${v.total} en Steam</a>`);
-  return `${head}<div class="d-list">${rows}</div>${foot.length ? `<div class="d-foot">${foot.map((f) => `<p>${f}</p>`).join('')}</div>` : ''}`;
+  return `${bodyOnly ? '' : head}<div class="d-list">${rows}</div>${foot.length ? `<div class="d-foot">${foot.map((f) => `<p>${f}</p>`).join('')}</div>` : ''}`;
 }
 
 /* ---------- 10: nota del vendedor (Kinguin) ---------- */

@@ -360,7 +360,7 @@ async function runCheck(limit: number) {
       const hitDrop = !!top && !steamWins && s.dropAlerts && !!save && save.pct >= s.dropPct && fell;
       const newLow = price != null && (w.notifiedPrice == null || price < w.notifiedPrice - 0.01);
       if ((hitTarget || hitDrop) && newLow && price != null) {
-        found.push({ appid: w.appid, name: c.game.name, price, store: steamWins ? 'steam' : top!.store, pct: save?.pct ?? 0, target: hitTarget ? w.target : undefined });
+        found.push({ appid: w.appid, name: c.game.name, price, store: steamWins ? 'steam' : top!.store, pct: save?.pct ?? 0, target: hitTarget ? w.target : undefined, before: prev ?? undefined });
         w.notifiedAt = Date.now();
         w.notifiedPrice = price;
       }
@@ -386,7 +386,30 @@ async function runCheck(limit: number) {
 }
 
 /** Un juego que bajó, para el aviso. */
-type Found = { appid: number; name: string; price: number; store: StoreId | 'steam'; pct: number; target?: number };
+type Found = { appid: number; name: string; price: number; store: StoreId | 'steam'; pct: number; target?: number; before?: number };
+
+/** 1.7 (13): la cápsula del juego como data: URL para el aviso. null si Steam no la da (el aviso sale sin imagen). */
+async function capsule(appid: number): Promise<string | null> {
+  try {
+    const r = await fetch(`https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`);
+    if (!r.ok) return null;
+    const bytes = new Uint8Array(await r.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return `data:image/jpeg;base64,${btoa(bin)}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Un aviso con imagen si se puede; si el sistema no acepta la imagen, el mismo aviso sin ella. */
+async function notifyImg(id: string, appid: number, opts: Record<string, any>) {
+  const img = await capsule(appid);
+  if (img) {
+    try { await browser.notifications.create(id, { ...opts, type: 'image', imageUrl: img } as any); return; } catch { /* sin imagen */ }
+  }
+  await browser.notifications.create(id, opts as any);
+}
 const HOUR = 3_600_000;
 const MUTE_BUTTON = { title: 'Silenciar 1 día' };
 const muted = (s: { mutedUntil: number }) => s.mutedUntil > Date.now();
@@ -411,18 +434,19 @@ async function notifyFound(found: Found[], s: Awaited<ReturnType<typeof getSetti
   const where = (f: Found) => (f.store === 'steam' ? 'Steam' : STORES[f.store].name);
   if (list.length === 1) {
     const f = list[0];
-    await browser.notifications.create(`wish:${f.appid}${f.store === 'steam' ? ':steam' : ''}`, {
+    await notifyImg(`wish:${f.appid}${f.store === 'steam' ? ':steam' : ''}`, f.appid, {
       type: 'basic',
       iconUrl: browser.runtime.getURL('/icon/128.png'),
-      title: `${f.name} bajó a $${f.price.toFixed(2)}`,
-      message: `En ${where(f)}${f.store === 'steam' ? '' : ' · activa en RD'} · ${f.target != null ? `tu límite era $${f.target.toFixed(2)}` : `−${f.pct}% frente a Steam`}`,
-      buttons: [{ title: f.store === 'steam' ? 'Ver en Steam' : 'Ver oferta' }, MUTE_BUTTON],
+      title: `${f.name} bajó a $${f.price.toFixed(2)} en ${where(f)}`,
+      message: `${f.before != null && f.before > f.price ? `Antes $${f.before.toFixed(2)} · ` : ''}${f.target != null ? `tu límite era $${f.target.toFixed(2)}` : `−${f.pct}% frente a Steam`}${f.store === 'steam' ? '' : ' · activa en RD'}`,
+      buttons: [{ title: f.store === 'steam' ? 'Ver en Steam' : `Ir a ${where(f)}` }, MUTE_BUTTON],
     });
   } else {
     // Primero los que llegaron a tu límite; luego los de más descuento.
     list.sort((a, b) => (a.target != null ? 0 : 1) - (b.target != null ? 0 : 1) || b.pct - a.pct);
     const shown = list.slice(0, 3).map((f) => `${f.name} $${f.price.toFixed(2)}${f.target != null ? ' (tu límite)' : f.pct ? ` (−${f.pct}%)` : ''}`);
-    await browser.notifications.create('drops', {
+    // 13: la imagen es la del primero (tu límite o el que más baja).
+    await notifyImg('drops', list[0].appid, {
       type: 'basic',
       iconUrl: browser.runtime.getURL('/icon/128.png'),
       title: `${list.length} juegos de tu lista bajaron`,
@@ -873,7 +897,7 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onInstalled.addListener(({ reason }) => {
-    if (reason === 'install') browser.runtime.openOptionsPage();
+    if (reason === 'install') void browser.tabs.create({ url: browser.runtime.getURL('/options.html#bienvenida' as any) });
     // Solo si no existen: recargar o actualizar la extensión no debe adelantar la revisión (ni sus avisos).
     void (async () => {
       if (!(await browser.alarms.get('wishlist'))) browser.alarms.create('wishlist', { periodInMinutes: 360, delayInMinutes: 5 });

@@ -1,13 +1,13 @@
 html, body { margin: 0; background: #17141a; }
 .wic { width: 390px; min-height: 260px; padding: 0 0 12px; }
 .wic.panelmode { width: auto; min-height: 100vh; }
-header { display: flex; align-items: center; gap: 9px; padding: 13px 14px; border-bottom: 1px solid #2c2730; }
+header { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-bottom: 1px solid #2c2730; }
 .brand { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
 header .chip { margin-left: auto; }
 .gear { background: none; border: 0; color: var(--mute); font-size: 16px; padding: 2px 4px; }
 .gear:hover { color: var(--ink); }
 .tabs { display: flex; gap: 2px; padding: 0 10px; border-bottom: 1px solid #2c2730; }
-.tabs button { background: none; border: 0; color: var(--mute); font-size: 13px; font-weight: 500; padding: 10px 10px; }
+.tabs button { background: none; border: 0; color: var(--mute); font-size: 12.5px; font-weight: 500; padding: 8px 9px; }
 .tabs button[aria-selected="true"] { color: var(--ink); box-shadow: inset 0 -2px 0 var(--tag); }
 .game { padding: 12px 14px 4px; display: grid; gap: 1px; }
 .game b { font-size: 16px; }
@@ -43,8 +43,8 @@ header .chip { margin-left: auto; }
 .warnc { color: var(--warn); }
 
 /* 7: buscador */
-.srch { padding: 10px 12px 2px; }
-.srch input { width: 100%; background: #141117; border: 1px solid #38323e; border-radius: 9px; color: var(--ink); font: inherit; font-size: 13px; padding: 8px 11px; }
+.srch { padding: 8px 12px 0; }
+.srch input { width: 100%; background: #141117; border: 1px solid #38323e; border-radius: 8px; color: var(--ink); font: inherit; font-size: 12.5px; padding: 6px 10px; }
 .srch input::placeholder { color: #7d757d; }
 .srch input:focus { border-color: var(--tag); outline: none; }
 .hits { display: grid; gap: 4px; padding: 8px 12px 0; }
@@ -68,3 +68,16 @@ header .chip { margin-left: auto; }
 .paidrow .skip { margin-left: auto; background: none; color: var(--mute); }
 .lim select { background: #141117; border: 1px solid #38323e; border-radius: 7px; color: var(--ink); font: 600 12px var(--f-mono); padding: 4px 2px; }
 .ir.go-sm { background: var(--tag); color: var(--tag-ink); border: 0; width: auto; padding: 6px 10px; }
+
+/* 1.7 (8): la cápsula del juego encima de la caja */
+.cap { position: relative; margin: 8px 12px 0; height: 96px; border-radius: 10px; overflow: hidden; background: linear-gradient(135deg, #2a2330, #17141a); }
+.cap img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.cap::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(10,8,12,0) 25%, rgba(10,8,12,.88)); }
+.cap-t { position: absolute; left: 12px; right: 12px; bottom: 8px; z-index: 1; display: grid; gap: 0; }
+.cap-t b { font-size: 16px; font-weight: 800; text-shadow: 0 2px 8px rgba(0,0,0,.8); }
+.cap-t > span { font-size: 11px; color: #d6cfd4; }
+.cap .from { position: absolute; z-index: 1; top: 7px; right: 7px; font-size: 11px; background: rgba(12,10,14,.82); border-radius: 99px; padding: 2px 9px; gap: 6px; }
+.cap .from .mute { font-size: 11px; color: #d6cfd4; }
+.cap { height: 84px; }
+.notes:empty, .pad.notes:not(:has(*)) { display: none; }
+.boxroot { margin-top: 8px; }

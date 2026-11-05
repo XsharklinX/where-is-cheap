@@ -1,5 +1,5 @@
 // Interfaz de la ventana del icono y del panel lateral (P): Precios, Lista de deseos (E) y Ahorro (O).
-import { call, friendlyError, streamCompare, trackClicks } from './api';
+import { call, friendlyError, streamCompare } from './api';
 import { savings } from './compare';
 import type { LedgerEntry, SteamStatus, SteamUser, WishItem } from './data';
 import { getSettings } from './settings';
@@ -7,10 +7,10 @@ import type { Compare, SearchHit, Settings } from './types';
 import { CURRENCIES, STORES } from './types';
 import type { FreeGame } from './free';
 import './block.css';
+import './box.css';
 import { detectGpu, type RunCheck } from './pc';
-import { alertHTML, panelFootHTML, sellersToAsk, tableHTML, topHTML, type BlockState } from './block';
-import type { SellerNote } from './stores/kinguin';
-import { esc, logo, money, notesHTML, shortDate, swapRows, TAG_SVG, usd } from './ui';
+import { boxShell, createBox, type Box } from './box';
+import { esc, logo, notesHTML, shortDate, TAG_SVG, usd } from './ui';
 
 type Tab = 'prices' | 'wish' | 'saved' | 'free';
 
@@ -120,67 +120,32 @@ export async function mountApp(app: HTMLElement, mode: 'popup' | 'panel') {
       ? `<span class="mute">Buscado</span>${tabApp && tabApp !== picked ? '<button class="lnk" data-a="unpick">Volver al de la pestaña</button>' : '<button class="lnk" data-a="unpick">Quitar</button>'}`
       : '<span class="mute">Detectado en esta pestaña</span>';
 
-    // 12: el mismo bloque que en la ficha de Steam. En la ventana la tabla sale abierta: hay sitio y es a lo que vienes.
-    const st: BlockState = { open: true, showNo: false, chart: false, editions: [] };
-    let last: Compare | null = null;
-    const paint = (c: Compare | null = last) => {
+    // 1.7 (8): la cápsula del juego, la mejor oferta y las tiendas en filas cortas; lo demás en chips. Cabe sin scroll.
+    let box: Box | null = null;
+    const paint = (c: Compare | null) => {
       if (my !== reqId || tab !== 'prices' || !body() || !c) return;
-      last = c;
       const b = body()!;
-      if (!b.querySelector('.blk')) {
-        b.innerHTML = `
-          <section class="game"><div class="from">${from}</div><b>${esc(c.game.name)}</b></section>
-          <div class="pad">${notesHTML(c)}<div class="blk${s.currency === 'usd' ? ' usd' : ''}"><div class="b-top"></div><div class="b-panel"><div class="b-rows"></div><div class="b-pf"></div></div><div class="b-al"></div></div></div>`;
+      if (!box) {
+        const img = `https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/${appid}/header.jpg`;
+        b.innerHTML = `<section class="cap"><img src="${img}" alt=""><div class="from">${from}</div><div class="cap-t"><b>${esc(c.game.name)}</b></div></section>
+          <div class="pad notes">${notesHTML(c)}</div><div class="pad"><div class="boxroot"></div></div>`;
+        b.querySelector('.cap img')?.addEventListener('error', (e) => (e.currentTarget as HTMLElement).remove());
         b.querySelector('[data-a="unpick"]')?.addEventListener('click', () => { picked = null; void game(false); });
-        b.querySelector('.blk')!.addEventListener('click', (ev) => {
-          const a = (ev.target as HTMLElement).closest<HTMLElement>('[data-a]')?.dataset.a;
-          if (a === 'toggle') st.open = !st.open;
-          else if (a === 'no') st.showNo = !st.showNo;
-          else if (a === 'chart') st.chart = !st.chart;
-          else if (a === 'refresh') { void game(true); return; }
-          else if (a === 'options') { void call('options'); return; }
-          else if (a === 'pc') { void call('options', { hash: 'pc' }); return; }
-          else if (a === 't-clear') { target = null; void call('setTarget', { appid, target: null }); }
-          else if (a === 't-edit') { target = null; }
-          else return;
-          paint();
-          if (a === 't-edit') b.querySelector<HTMLInputElement>('#wic-target')?.focus();
-        });
-        // 8: el aviso de precio, también desde aquí.
-        b.querySelector('.blk')!.addEventListener('submit', (ev) => {
-          ev.preventDefault();
-          const inp = b.querySelector<HTMLInputElement>('#wic-target')!;
-          const n = Number(inp.value);
-          if (!(n > 0)) { inp.setCustomValidity('Pon un precio mayor que 0'); inp.reportValidity(); return; }
-          target = Math.round(n * 100) / 100;
-          void call('setTarget', { appid, target, name: c.game.name });
-          (document.activeElement as HTMLElement | null)?.blur();
-          paint();
-        });
+        const root = b.querySelector<HTMLElement>('.boxroot')!;
+        root.innerHTML = boxShell('pop', s);
+        box = createBox(root, appid, 'pop', s, {
+          refresh: () => void game(true),
+          options: (hash) => { void call('options', hash ? { hash } : undefined); if (mode === 'popup') window.close(); },
+        }, app);
       }
-      b.querySelector('.b-top')!.innerHTML = topHTML(c, s, st);
-      const panel = b.querySelector<HTMLElement>('.b-panel')!;
-      panel.hidden = !st.open;
-      swapRows(b.querySelector<HTMLElement>('.b-rows')!, tableHTML(c, s, st));
-      b.querySelector('.b-pf')!.innerHTML = panelFootHTML(c, s);
-      const al = b.querySelector<HTMLElement>('.b-al')!;
-      if (!al.contains(document.activeElement)) al.innerHTML = c.owned || c.game.isFree ? '' : alertHTML(target, c);
-      trackClicks(b.querySelector<HTMLElement>('.blk')!, c, app);
-      // 10: quién vende la oferta más barata de Kinguin, cuando ya respondió.
-      if (st.open && !c.pending?.includes('kinguin')) {
-        for (const { url, cents } of sellersToAsk(c, st)) {
-          (st.sellers ??= {})[url] = null;
-          void call<SellerNote | null>('seller', { url, cents }).then((n) => { if (n) { st.sellers![url] = n; paint(); } }).catch(() => {});
-        }
-      }
+      box.set(c);
     };
-    let target: number | null = await call<number | null>('getTarget', { appid }).catch(() => null);
 
     try {
       const c = await streamCompare(appid, fresh, paint);
       paint(c);
       // 4: «¿Lo corre mi PC?» cuando ya están los precios (los requisitos llegan con la ficha).
-      if (!c.game.isFree) void call<RunCheck>('canRun', { appid, gpu: detectGpu() }).then((r) => { st.run = r; paint(); }).catch(() => {});
+      if (!c.game.isFree) void call<RunCheck>('canRun', { appid, gpu: detectGpu() }).then((r) => { if (box) { box.st.run = r; box.paint(); } }).catch(() => {});
     } catch (e) {
       if (my !== reqId || !body()) return;
       body()!.innerHTML = empty('No pudimos comparar precios', esc(friendlyError(e)), '<button class="go" data-a="retry">Reintentar</button>');
@@ -326,6 +291,15 @@ export async function mountApp(app: HTMLElement, mode: 'popup' | 'panel') {
       shell(empty('No pudimos leer los juegos gratis', esc(friendlyError(e))));
     }
   }
+
+  // 15: con la ventana abierta (Alt+W), Enter va a la mejor oferta si no estás escribiendo.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || tab !== 'prices') return;
+    const t = e.target as HTMLElement;
+    if (t.closest('input, textarea, select, button, a')) return;
+    const go = app.querySelector<HTMLAnchorElement>('.x-best .x-go, .x-act .x-go');
+    if (go) { e.preventDefault(); go.click(); }
+  });
 
   await render(false);
   if (mode === 'panel') {
